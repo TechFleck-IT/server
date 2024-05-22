@@ -1,5 +1,5 @@
 const os = require('os');
-const publicIp = require('public-ip');
+const publicIp = import('public-ip');
 
 class NetworkInfo {
   constructor() {
