@@ -1,0 +1,143 @@
+<div class="vertical-menu">
+
+    <!-- LOGO -->
+    <div class="navbar-brand-box">
+        <a href="/admin" class="logo logo-dark">
+            <span class="logo-sm">
+                <img src="<%= appLogo %>" alt="" height="22" onerror="noImage()">
+            </span>
+            <span class="logo-lg">
+                <img src="<%= appLogo %>" alt="" height="22" onerror="noImage()">
+            </span>
+        </a>
+
+        <a href="/admin" class="logo logo-light">
+            <span class="logo-sm">
+                <img src="<%= appLogo %>" alt="" height="22" onerror="throw new Error('Image failed to load.');">
+            </span>
+            <span class="logo-lg">
+                <img src="<%= appLogo %>" alt="" height="22" onerror="noImage()">
+            </span>
+        </a>
+    </div>
+
+    <button type="button" class="btn btn-sm px-3 font-size-16 header-item waves-effect vertical-menu-btn">
+        <i class="fa fa-fw fa-bars"></i>
+    </button>
+
+    <div data-simplebar class="sidebar-menu-scroll">
+
+        <!--- Sidemenu -->
+        <div id="sidebar-menu">
+            <!-- Left Menu Start -->
+            <ul class="metismenu list-unstyled" id="side-menu">
+                <li class="menu-title">Menu</li>
+                <li <% if (selected == 0) { %> class="active" <% } %>>
+                    <a href="/admin/">
+                        <i class="uil-home-alt"></i>
+                        <span>Dashboard</span>
+                    </a>
+                </li>
+                <li <% if (selected == 1) { %> class="active mm-active" <% } %>>
+                    <a href="/admin/users">
+                        <i class="uil-users-alt"></i>
+                        <span>Users</span>
+                    </a>
+                </li>
+                <li <% if (selected == 2) { %> class="active mm-active" <% } %>>
+                    <a href="/admin/administrators" class="waves-effect">
+                        <i class="uil-window-section"></i>
+                        <span>Administrators</span>
+                    </a>
+                </li>
+
+                <li <% if (selected == 3) { %> class="active mm-active" <% } %>>
+                    <a href="/admin/videos" class="waves-effect">
+                        <i class="uil-video"></i>
+                        <span>Videos</span>
+                    </a>
+                </li>
+
+                <li <% if (selected == 4) { %> class="active mm-active" <% } %>>
+                    <a href="/admin/comments" class=" waves-effect">
+                        <i class="uil-comments-alt"></i>
+                        <span>Comments</span>
+                    </a>
+                </li>
+
+                <li <% if (selected == 5) { %> class="active mm-active" <% } %>>
+                <a href="javascript: void(0);" class="has-arrow waves-effect">
+                    <i class="uil-question-circle"></i>
+                    <span>Reports</span>
+                </a>
+                <ul class="sub-menu" aria-expanded="true">
+                    <li><a href="/admin/report_reason">Reasons</a></li>
+                    <li><a href="/admin/reports">Reported Videos</a></li>
+                    <li><a href="/admin/reports_users">Reported Users</a></li>
+                </ul>
+            </li>
+
+                <li>
+                    <a href="javascript: void(0);" class="has-arrow waves-effect">
+                        <i class="uil-music-note"></i>
+                        <span>Sounds</span>
+                    </a>
+                    <ul class="sub-menu" aria-expanded="true">
+                        <li><a href="/admin/sound_categories">Categories</a></li>
+                        <li><a href="/admin/sounds">Sounds</a></li>
+                    </ul>
+                </li> 
+
+                <li <% if (selected == 12) { %> class="active mm-active" <% } %>>
+                    <a href="javascript: void(0);" class="has-arrow waves-effect">
+                        <i class="uil-bolt-alt"></i>
+                        <span>Advertisement</span>
+                    </a>
+                    <ul class="sub-menu" aria-expanded="true">
+                        <li><a href="/admin/banners">Banners</a></li>
+                        <li><a href="/admin/admob">Admob settings</a></li>
+                    </ul>
+                </li>
+                <li <% if (selected == 15) { %> class="active mm-active" <% } %>>
+                    <a href="/admin/tags" class="waves-effect">
+                        <i class="uil-tag"></i>
+                        <span>Tags</span>
+                    </a>
+                </li>
+                <li <% if (selected == 17) { %> class="active mm-active" <% } %>>
+                    <a href="/admin/settings" class="waves-effect">
+                        <i class="uil-wrench"></i>
+                        <span>Settings</span>
+                    </a>
+                </li>
+
+            </ul>
+        </div>
+        <!-- Sidebar -->
+    </div>
+</div>
+
+<!-- <script>
+        window.addEventListener('error', function (event) {
+      if (event.target.tagName === 'IMG') {
+        throw new Error('Image failed to load.');
+      }
+    }, true);
+    function noImage() {
+    var img = document.querySelector('img');
+    var errorImage = 'https://media.istockphoto.com/id/618734380/photo/imge-of-mint.jpg?s=612x612&w=0&k=20&c=wM6B5B9lhybagGbpsF5GnrO1YUF_t1z_oWPdTG1edp8='; // Replace 'dummy.png' with the path to your dummy image
+  
+    if (img.src.includes('ERR_CONNECTION_TIMED_OUT')) {
+      img.src = errorImage;
+    }
+  }
+
+  function handleImageError() {
+    var img = document.querySelector('img');
+    var errorImage = 'https://media.istockphoto.com/id/618734380/photo/imge-of-mint.jpg?s=612x612&w=0&k=20&c=wM6B5B9lhybagGbpsF5GnrO1YUF_t1z_oWPdTG1edp8='; // Replace 'dummy.png' with the path to your dummy image
+  
+    if (img.src.includes('ERR_CONNECTION_TIMED_OUT')) {
+      img.src = errorImage;
+    }
+  }
+</script> -->
