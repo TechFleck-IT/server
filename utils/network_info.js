@@ -1,5 +1,5 @@
 const os = require('os');
-const publicIp = import('public-ip');
+const publicIp = import ('public-ip');
 
 class NetworkInfo {
   constructor() {
@@ -19,9 +19,9 @@ class NetworkInfo {
         }
       });
     });
-
+    
     this.privateAddress = addresses[0];
-    this.publicAddress = await publicIp.v4();
+    this.publicAddress = (await publicIp).publicIpv4().then(ip => {return ip});
   }
 
   getPrivateAddress() {
