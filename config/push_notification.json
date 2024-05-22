@@ -1,0 +1,13 @@
+{
+    "type": "service_account",
+    "project_id": "cookster-b1251",
+    "private_key_id": "d539abc3320e6bc8e94e23093cdea86210cbca3c",
+    "private_key": "-----BEGIN PRIVATE KEY-----\nMIIEvgIBADANBgkqhkiG9w0BAQEFAASCBKgwggSkAgEAAoIBAQDX99kuvFICrM+x\nqWMo0iN31SNdO65nuJzFd4QfQhmydhfVVIMqaO3v41+fe0xl/XcB6AWNeiSjy9RW\nUYo5mWY22nXu1E5dRYOIlfZypNNXZJdNoZsBJlbockTet/FAn7LQo69N3lZ/JzFn\nQwyNLiOlFORotU7FHxZmZ5o7wD+pm6vzDoUOkx+8jBhZAUueo1ZADHs6xKfLWsE7\noPxGDlPrYHUsaHJJB1iCkVb/2rrjn+TZe/p1RwqAfbQIYF4ZH/jIxsUsHs5UPmDd\nwK30JDY+rLSYdtDBQ4XYtpcjynDl9fmHQpzXBxwlceNHolOZd9Xsu8WSM/ghblJc\nf7KlhCGTAgMBAAECggEAaLmXV6nbLM/mwPRuEJfhuhShGu87UbF8V+buKwgvFNJe\nGUTre8+4/Xfo4Rl1gQlpQYPk2Wdux/ypoRfWKrsfjR7fTCooO+Ne9ocdpBcYIos1\nMWBZnTOdtgbfLY7NznQCTljpQ526nNsBAl1Jg1Zp032virTMlxrNjmfTqwC8/j2J\nnT8uVNSSqauDvn1WiNAdKUfo5uBnNW07axxtyqxEKsFqfGueV3xhfMlgLe/0wS7E\nwTVcVohyOE0dNpTHKPyVEWwda3Y8yHdP28LunQ6lh/ppPUN9H+5VOy6RL3f/5oSu\n1B2GPCQr5cxeXTfLXtLS4HCtbNEQ7kWy/W4SLDjfwQKBgQD65U8h4gOHx2Ug4mps\nizPrWAOmUSkYahOZemMr06bjPosoEEq8Q8lY86Up6pBtfvBV432WYG8Wb18xUODb\nVmgSoyfJyJqX4MXbv+JxU9YuNkb7hKkaT0k2Gl9u+VR3ghCX3K7TCzF9KKErDzKh\nLRaa6RshEUZI6rpsQsxqcG3oQQKBgQDcXKIAEjM1hHI4zjJEFjSDDLHNc2kn9Opt\n+dlHPJKaU3HRWbEHLMK9vUqJ4U2NGWMA4Mharna907/oGAHVuedXa2BPuKI6xW0/\nanIJR80GlwEk6C9oIE6u/uk3Zgaak6X9a9Jx+UfFc+4RjBqDZwRt8WfP5ADSg6PM\nO62Oy6C00wKBgQCgme6IkuONo65xWV2kc4rdiC515Rf4P9ah9PzMTiRS7HMpRxx/\n3KhjXzsHVNX0sT/oysFWZA5X/xyhNdNps6rU20mZ2eZTeBdPLkomHvNIC4huciHI\n7J3BmyohoEpYYZJ7k1D5WP3pzvsz0/ulvnXs3XB3P1aNUGva5vtw2t0PwQKBgBwm\naTuBF7Gafczr6lfwTjz/fic0uxYzn071P+BtyHyWdE++GXNFMIt0hvUeJv4DZDZU\ngMO0zc5qInXPu0xGN1tfiCom9/JyDgav3ml5FqPk3myMjKHMnsCUJ86/5dARVH8P\nKw8MPTLoIF11fF2U52f0EsLn6YL69g29Aerf8GOpAoGBAICKw8ab3fMrLuarkud3\nDhubrn+sJNWfxjd7YE7OpqFONx8CkCdBoZ4aolJoYSlkR7XfcgdETRlAzDps19MX\n9Fhi5w/14b4O7DwqovMx/xTzJ/jEcF5xo2/TqdjQkZpm+EOvhXUkZPkfcSdHaBBd\nUUsxVOjxvvJ85oBlWOlVYfBQ\n-----END PRIVATE KEY-----\n",
+    "client_email": "firebase-adminsdk-vg97m@cookster-b1251.iam.gserviceaccount.com",
+    "client_id": "101362511476558879285",
+    "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+    "token_uri": "https://oauth2.googleapis.com/token",
+    "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
+    "client_x509_cert_url": "https://www.googleapis.com/robot/v1/metadata/x509/firebase-adminsdk-vg97m%40cookster-b1251.iam.gserviceaccount.com",
+    "universe_domain": "googleapis.com"
+  }
