@@ -4,7 +4,7 @@ const readline = require('readline');
 const crypto = require('crypto');
 const chalk = require('chalk');
 const { exec } = require('child_process');
-const publicIp = import('public-ip');
+const publicIp = require('public-ip');
 const rl = readline.createInterface({
   input: process.stdin,
   output: process.stdout
@@ -145,7 +145,7 @@ if (!fs.existsSync(configPath)) {
     } else if (input == "doctor") {
       console.log("Checking dependencies...");
 
-      exec('which ffmpeg', (err, stdout, stderr) => {
+      exec('where ffmpeg', (err, stdout, stderr) => {
         if (err) {
           console.error(`Error checking for FFmpeg: ${err.message}`);
           return;
@@ -166,7 +166,7 @@ if (!fs.existsSync(configPath)) {
     }
   });
 
-  exec('which ffmpeg', (err, stdout, stderr) => {
+  exec('where ffmpeg', (err, stdout, stderr) => {
     if (err) {
       console.error(chalk.red(`Error checking for FFmpeg: ${err.message}`));
       return;
