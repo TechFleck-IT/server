@@ -15,6 +15,8 @@ const e = require('express');
 
 const configPath = './config/config.js';
 const uploadsPath = './uploads';
+const swaggerUI = require('swagger-ui-express');
+const swaggerSpec = require('./config/swagger');
 
 console.log(chalk.blue('\nCopyright \u00A9 vativeApps 2023.') + ' Visit us at ' + chalk.underline.blue('https://www.vativeapps.com/') + ' for more information.');
 
@@ -186,6 +188,9 @@ if (!fs.existsSync(configPath)) {
 
   const express = require('express');
   const app = express();
+
+  // Serve Swagger documentation
+  app.use('/api-docs', swaggerUI.serve, swaggerUI.setup(swaggerSpec, { explorer: true }));
 
   app.use((req, res, next) => {
     console.log(req.method, req.url);

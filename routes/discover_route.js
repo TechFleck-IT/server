@@ -11,7 +11,41 @@ const cron = require('node-cron');
   router.use(express.static(__dirname + '/public'));
   router.use('/uploads', express.static('uploads'));
   
-
+/**
+ * @swagger
+ * tags:
+ *   name: Discover Routes
+ *   description: Discover Routes APIs
+ * /top_users:
+ *   get:
+ *     summary: Get top users
+ *     tags: [Discover Routes]
+ *     parameters:
+ *       - in: query
+ *         name: from
+ *         schema:
+ *           type: integer
+ *           default: 0
+ *         description: Pagination offset
+ *       - in: query
+ *         name: search
+ *         schema:
+ *           type: string
+ *           default: ""
+ *         description: Search query
+ *     responses:
+ *       200:
+ *         description: A list of top users
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 users:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ */
 router.get('/top_users', async (req, res) => {
   const authUserId = req.user ? req.user.id : 0;
   const from = req.query['from'] ?? 0;
@@ -22,6 +56,49 @@ router.get('/top_users', async (req, res) => {
   });
 });
 
+/**
+ * @swagger
+ * tags:
+ *   name: Discover Routes
+ *   description: Discover Routes APIs
+ * /top:
+ *   get:
+ *     summary: Get top users, videos, and sounds
+ *     tags: [Discover Routes]
+ *     parameters:
+ *       - in: query
+ *         name: from
+ *         schema:
+ *           type: integer
+ *           default: 0
+ *         description: Pagination offset
+ *       - in: query
+ *         name: search
+ *         schema:
+ *           type: string
+ *           default: ""
+ *         description: Search query
+ *     responses:
+ *       200:
+ *         description: A list of top users, videos, and sounds
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 users:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                 videos:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                 sounds:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ */
 router.get('/top', async (req, res) => {
     const authUserId = req.user ? req.user.id : 0;
     const from = req.query['from'] ?? 0;
@@ -36,6 +113,32 @@ router.get('/top', async (req, res) => {
     });
 });
 
+/**
+ * @swagger
+ * tags:
+ *   name: Discover Routes
+ *   description: Discover Routes APIs
+ * /video:
+ *   get:
+ *     summary: Get video by ID
+ *     tags: [Discover Routes]
+ *     parameters:
+ *       - in: query
+ *         name: videoId
+ *         schema:
+ *           type: integer
+ *           default: 0
+ *         description: Video ID
+ *     responses:
+ *       200:
+ *         description: Video details
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *       400:
+ *         description: Video not found
+ */
 router.get('/video', async (req, res) => {
   const authUserId = req.user ? req.user.id : 0;
   const videoId = req.query['videoId'] ?? 0;
@@ -48,6 +151,47 @@ router.get('/video', async (req, res) => {
   }
 });
 
+/**
+ * @swagger
+ * tags:
+ *   name: Discover Routes
+ *   description: Discover Routes APIs
+ * /sounds:
+ *   get:
+ *     summary: Get sounds
+ *     tags: [Discover Routes]
+ *     parameters:
+ *       - in: query
+ *         name: from
+ *         schema:
+ *           type: integer
+ *           default: 0
+ *         description: Pagination offset
+ *       - in: query
+ *         name: search
+ *         schema:
+ *           type: string
+ *           default: ""
+ *         description: Search query
+ *       - in: query
+ *         name: isFavorite
+ *         schema:
+ *           type: boolean
+ *           default: false
+ *         description: Filter by favorite sounds
+ *     responses:
+ *       200:
+ *         description: A list of sounds
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 sounds:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ */
 router.get('/sounds', async (req, res) => {
     const authUserId = req.user ? req.user.id : 0;
     const from = req.query['from'] ?? 0;
@@ -66,6 +210,53 @@ router.get('/sounds', async (req, res) => {
     });
 });
 
+/**
+ * @swagger
+ * tags:
+ *   name: Discover Routes
+ *   description: Discover Routes APIs
+ * /videos:
+ *   get:
+ *     summary: Get videos with filters
+ *     tags: [Discover Routes]
+ *     parameters:
+ *       - in: query
+ *         name: uUserId
+ *         schema:
+ *           type: string
+ *           default: ""
+ *         description: User ID for filtering
+ *       - in: query
+ *         name: from
+ *         schema:
+ *           type: integer
+ *           default: 0
+ *         description: Pagination offset
+ *       - in: query
+ *         name: search
+ *         schema:
+ *           type: string
+ *           default: ""
+ *         description: Search query
+ *       - in: query
+ *         name: filter
+ *         schema:
+ *           type: string
+ *           default: "foryou"
+ *         description: Filter type (foryou, featured, following, exclusive)
+ *     responses:
+ *       200:
+ *         description: A list of videos
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 videos:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ */
 router.get('/videos', async (req, res) => {
     const authUserId = req.user ? req.user.id : -1;
     const uUserId = req.query['uUserId'] ?? "";
@@ -92,6 +283,41 @@ router.get('/videos', async (req, res) => {
     });
 });
 
+/**
+ * @swagger
+ * tags:
+ *   name: Discover Routes
+ *   description: Discover Routes APIs
+ * /people:
+ *   get:
+ *     summary: Search people
+ *     tags: [Discover Routes]
+ *     parameters:
+ *       - in: query
+ *         name: from
+ *         schema:
+ *           type: integer
+ *           default: 0
+ *         description: Pagination offset
+ *       - in: query
+ *         name: search
+ *         schema:
+ *           type: string
+ *           default: ""
+ *         description: Search query
+ *     responses:
+ *       200:
+ *         description: A list of people
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 users:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ */
 router.get('/people', async (req, res) => {
     const authUserId = req.user ? req.user.id : 0;
     const from = req.query['from'] ?? 0;
@@ -102,6 +328,45 @@ router.get('/people', async (req, res) => {
     });
 });
 
+/**
+ * @swagger
+ * tags:
+ *   name: Discover Routes
+ *   description: Discover Routes APIs
+ * /tags:
+ *   get:
+ *     summary: Get tags
+ *     tags: [Discover Routes]
+ *     parameters:
+ *       - in: query
+ *         name: userId
+ *         schema:
+ *           type: integer
+ *           default: 0
+ *         description: User ID
+ *       - in: query
+ *         name: from
+ *         schema:
+ *           type: integer
+ *           default: 0
+ *         description: Pagination offset
+ *     responses:
+ *       200:
+ *         description: A list of tags and banners
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 banners:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                 tags:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ */
 router.get('/tags', async (req, res) => {
     const authUserId = req.user ? req.user.id : 0;
     const userId = req.query['userId'] ?? 0;
@@ -114,6 +379,36 @@ router.get('/tags', async (req, res) => {
     });
 });
 
+/**
+ * @swagger
+ * tags:
+ *   name: Discover Routes
+ *   description: Discover Routes APIs
+ * /tag:
+ *   get:
+ *     summary: Get tag details
+ *     tags: [Discover Routes]
+ *     parameters:
+ *       - in: query
+ *         name: tagId
+ *         schema:
+ *           type: integer
+ *           default: 0
+ *         description: Tag ID
+ *       - in: query
+ *         name: tagName
+ *         schema:
+ *           type: string
+ *           default: ""
+ *         description: Tag name
+ *     responses:
+ *       200:
+ *         description: Tag details
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ */
 router.get('/tag', async (req, res) => {
     const authUserId = req.user ? req.user.id : 0;
     const tagId = req.query['tagId'] ?? 0;

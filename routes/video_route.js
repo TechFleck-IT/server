@@ -2,7 +2,44 @@ const express = require('express');
 const router = express.Router();
 const db = require('../config/db_handler');
 const adminFirebase = require("firebase-admin");
+/**
+ * @swagger
+ * tags:
+ *   name: Video Routes
+ *   description: API routes related to videos
+ */
 
+
+/**
+   * @swagger
+   * /viewed:
+   *   post:
+   *     tags: [Video Routes]
+   *     summary: Mark a video as viewed
+   *     requestBody:
+   *       required: true
+   *       content:
+   *         application/json:
+   *           schema:
+   *             type: object
+   *             properties:
+   *               video_id:
+   *                 type: integer
+   *               user_id:
+   *                 type: integer
+   *     responses:
+   *       200:
+   *         description: Video marked as viewed
+   *         content:
+   *           application/json:
+   *             schema:
+   *               type: object
+   *               properties:
+   *                 result:
+   *                   type: boolean
+   *       401:
+   *         description: Unauthorized
+   */
 router.post('/viewed', async (req, res) => {
     let own;
     const userId = req.user ? req.user.id : 0;
@@ -22,6 +59,34 @@ router.post('/viewed', async (req, res) => {
 
 });
 
+/**
+   * @swagger
+   * /deleteVideo:
+   *   post:
+   *     tags: [Video Routes]
+   *     summary: Delete a video
+   *     requestBody:
+   *       required: true
+   *       content:
+   *         application/json:
+   *           schema:
+   *             type: object
+   *             properties:
+   *               video_id:
+   *                 type: integer
+   *     responses:
+   *       200:
+   *         description: Video deleted
+   *         content:
+   *           application/json:
+   *             schema:
+   *               type: object
+   *               properties:
+   *                 result:
+   *                   type: boolean
+   *       401:
+   *         description: Unauthorized
+   */
 router.post('/deleteVideo', async (req, res) => {
     if (!req.user) {
         res.status(401).send({
@@ -37,6 +102,36 @@ router.post('/deleteVideo', async (req, res) => {
     });
 });
 
+/**
+   * @swagger
+   * /like:
+   *   post:
+   *     tags: [Video Routes]
+   *     summary: Toggle like status of a video
+   *     requestBody:
+   *       required: true
+   *       content:
+   *         application/json:
+   *           schema:
+   *             type: object
+   *             properties:
+   *               video_id:
+   *                 type: integer
+   *               value:
+   *                 type: boolean
+   *     responses:
+   *       200:
+   *         description: Like status toggled
+   *         content:
+   *           application/json:
+   *             schema:
+   *               type: object
+   *               properties:
+   *                 result:
+   *                   type: boolean
+   *       401:
+   *         description: Unauthorized
+   */
 router.post('/like', async (req, res) => {
     if (!req.user) {
         res.status(401).send({
@@ -65,12 +160,64 @@ router.post('/like', async (req, res) => {
     });
 });
 
+/**
+   * @swagger
+   * /getReports:
+   *   get:
+   *     tags: [Video Routes]
+   *     summary: Get reports
+   *     responses:
+   *       200:
+   *         description: List of reports
+   *         content:
+   *           application/json:
+   *             schema:
+   *               type: array
+   *               items:
+   *                 type: object
+   *       401:
+   *         description: Unauthorized
+   */
 router.get('/getReports', async (req, res) => {
     const authUserId = req.user ? req.user.id : 0;
     const reports = await db.getReports(authUserId);
     res.send(reports);
 });
 
+/**
+   * @swagger
+   * /reportVideo:
+   *   post:
+   *     tags: [Video Routes]
+   *     summary: Report a video
+   *     requestBody:
+   *       required: true
+   *       content:
+   *         application/json:
+   *           schema:
+   *             type: object
+   *             properties:
+   *               userId:
+   *                 type: integer
+   *               uUserId:
+   *                 type: string
+   *               videoId:
+   *                 type: integer
+   *               reason:
+   *                 type: integer
+   *     responses:
+   *       200:
+   *         description: Video reported
+   *         content:
+   *           application/json:
+   *             schema:
+   *               type: object
+   *               properties:
+   *                 result:
+   *                   type: boolean
+   *       401:
+   *         description: Unauthorized
+   */
 router.post('/reportVideo', async (req, res) => {
     const userId = req.body['userId'] ?? null;
     const uUserId = req.body['uUserId'] ?? "";
@@ -84,6 +231,38 @@ router.post('/reportVideo', async (req, res) => {
     });
 });
 
+/**
+   * @swagger
+   * /notInterested:
+   *   post:
+   *     tags: [Video Routes]
+   *     summary: Mark a video as not interested
+   *     requestBody:
+   *       required: true
+   *       content:
+   *         application/json:
+   *           schema:
+   *             type: object
+   *             properties:
+   *               userId:
+   *                 type: integer
+   *               uUserId:
+   *                 type: integer
+   *               videoId:
+   *                 type: integer
+   *     responses:
+   *       200:
+   *         description: Video marked as not interested
+   *         content:
+   *           application/json:
+   *             schema:
+   *               type: object
+   *               properties:
+   *                 result:
+   *                   type: boolean
+   *       401:
+   *         description: Unauthorized
+   */
 router.post('/notInterested', async (req, res) => {
     const userId = req.body['userId'] ?? null;
     const uUserId = req.body['uUserId'] ?? null;
@@ -95,6 +274,36 @@ router.post('/notInterested', async (req, res) => {
     });
 });
 
+/**
+   * @swagger
+   * /likeComment:
+   *   post:
+   *     tags: [Video Routes]
+   *     summary: Toggle like status of a comment
+   *     requestBody:
+   *       required: true
+   *       content:
+   *         application/json:
+   *           schema:
+   *             type: object
+   *             properties:
+   *               comment_id:
+   *                 type: integer
+   *               value:
+   *                 type: boolean
+   *     responses:
+   *       200:
+   *         description: Like status toggled
+   *         content:
+   *           application/json:
+   *             schema:
+   *               type: object
+   *               properties:
+   *                 result:
+   *                   type: boolean
+   *       401:
+   *         description: Unauthorized
+   */
 router.post('/likeComment', async (req, res) => {
     if (!req.user) {
         res.status(401).send({
@@ -123,6 +332,44 @@ router.post('/likeComment', async (req, res) => {
     });
 });
 
+/**
+   * @swagger
+   * /comments:
+   *   get:
+   *     tags: [Video Routes]
+   *     summary: Get comments
+   *     parameters:
+   *       - in: query
+   *         name: from
+   *         schema:
+   *           type: integer
+   *           default: 0
+   *         description: Pagination offset
+   *       - in: query
+   *         name: videoId
+   *         schema:
+   *           type: integer
+   *         description: ID of the video
+   *       - in: query
+   *         name: commentId
+   *         schema:
+   *           type: integer
+   *         description: ID of the comment
+   *     responses:
+   *       200:
+   *         description: List of comments
+   *         content:
+   *           application/json:
+   *             schema:
+   *               type: object
+   *               properties:
+   *                 comments:
+   *                   type: array
+   *                   items:
+   *                     type: object
+   *       401:
+   *         description: Unauthorized
+   */
 router.get('/comments', async (req, res) => {
     const authUserId = req.user ? req.user.id : 0;
     const from = req.query['from'] ?? 0;
@@ -141,6 +388,40 @@ router.get('/comments', async (req, res) => {
     });
 });
 
+/**
+   * @swagger
+   * /comment:
+   *   post:
+   *     tags: [Video Routes]
+   *     summary: Add a comment
+   *     requestBody:
+   *       required: true
+   *       content:
+   *         application/json:
+   *           schema:
+   *             type: object
+   *             properties:
+   *               video_id:
+   *                 type: integer
+   *               comment_id:
+   *                 type: integer
+   *               comment:
+   *                 type: string
+   *     responses:
+   *       200:
+   *         description: Comment added
+   *         content:
+   *           application/json:
+   *             schema:
+   *               type: object
+   *               properties:
+   *                 id:
+   *                   type: integer
+   *       401:
+   *         description: Unauthorized
+   *       400:
+   *         description: Invalid request
+   */
 router.post('/comment', async (req, res) => {
     if (!req.user) {
         res.status(401).send({
@@ -185,6 +466,38 @@ router.post('/comment', async (req, res) => {
     }
 });
 
+/**
+   * @swagger
+   * /deleteComment:
+   *   post:
+   *     tags: [Video Routes]
+   *     summary: Delete a comment
+   *     requestBody:
+   *       required: true
+   *       content:
+   *         application/json:
+   *           schema:
+   *             type: object
+   *             properties:
+   *               commentId:
+   *                 type: integer
+   *               videoId:
+   *                 type: integer
+   *               parentId:
+   *                 type: integer
+   *     responses:
+   *       200:
+   *         description: Comment deleted
+   *         content:
+   *           application/json:
+   *             schema:
+   *               type: object
+   *               properties:
+   *                 result:
+   *                   type: boolean
+   *       401:
+   *         description: Unauthorized
+   */
 router.post('/deleteComment', async (req, res) => {
     if (!req.user) {
         res.status(401).send({
