@@ -2,22 +2,13 @@ const swaggerJSDoc = require('swagger-jsdoc');
 const swaggerDefinition = {
 openapi: '3.0.0',
 info: {
-title: 'My API',
+title: 'CookStar APIs',
 version: '1.0.0',
-description: 'My API Description',
-license: {
-    name: "MIT",
-    url: "https://spdx.org/licenses/MIT.html",
-  },
-  contact: {
-    name: "LogRocket",
-    url: "https://logrocket.com",
-    email: "info@email.com",
-  }
+description: 'APIs Description',
 },
 servers: [
     {
-      url: "http://localhost:3000",
+      url: "http://16.171.36.94:3004/",
     }
   ]
 };
