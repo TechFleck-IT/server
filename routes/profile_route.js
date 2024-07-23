@@ -11,7 +11,37 @@ const AWS = require('aws-sdk');
 const mime = require('mime-types');
 const { v4: uuidv4 } = require('uuid');
 var getIP = require('ipware')().get_ip;
+/**
+ * @swagger
+ * tags:
+ *   name: Profile Routes
+ *   description: Endpoints related to user profiles
+ */
 
+/**
+   * @swagger
+   * /:
+   *   get:
+   *     tags: [Profile Routes]
+   *     summary: Get user profile
+   *     parameters:
+   *       - in: query
+   *         name: userId
+   *         schema:
+   *           type: integer
+   *           default: 0
+   *         description: User ID
+   *     responses:
+   *       200:
+   *         description: User profile
+   *         content:
+   *           application/json:
+   *             schema:
+   *               type: object
+   *               properties:
+   *                 user:
+   *                   type: object
+   */
 router.get('', async (req, res) => {
     const userId = req.query['userId'] ?? 0;
     const authUserId = req.user ? req.user.id : 0;
@@ -37,6 +67,63 @@ const videoStorage = multer.diskStorage({
 
 const sharp = require('sharp');
 const upload = multer({ storage: videoStorage })
+/**
+   * @swagger
+   * /upload:
+   *   post:
+   *     tags: [Profile Routes]
+   *     summary: Upload a video
+   *     requestBody:
+   *       required: true
+   *       content:
+   *         multipart/form-data:
+   *           schema:
+   *             type: object
+   *             properties:
+   *               video:
+   *                 type: string
+   *                 format: binary
+   *               caption:
+   *                 type: string
+   *               sound_id:
+   *                 type: integer
+   *               allowComments:
+   *                 type: boolean
+   *               allowSharing:
+   *                 type: boolean
+   *               private:
+   *                 type: boolean
+   *               allowDuet:
+   *                 type: boolean
+   *               allowGifts:
+   *                 type: boolean
+   *               duration:
+   *                 type: integer
+   *               exclusiveAmount:
+   *                 type: integer
+   *               isAd:
+   *                 type: boolean
+   *               clickable_url:
+   *                 type: string
+   *               budget:
+   *                 type: integer
+   *               days:
+   *                 type: integer
+   *     responses:
+   *       200:
+   *         description: Video uploaded successfully
+   *         content:
+   *           application/json:
+   *             schema:
+   *               type: object
+   *               properties:
+   *                 result:
+   *                   type: boolean
+   *       401:
+   *         description: Unauthorized
+   *       500:
+   *         description: Server error
+   */
 router.post('/upload', upload.single('video'), async (req, res) => {
     if (!req.user) {
         res.status(401).send({
@@ -162,6 +249,44 @@ async function getDuration(filePath) {
     });
 }
 
+/**
+   * @swagger
+   * /videos:
+   *   get:
+   *     tags: [Profile Routes]
+   *     summary: Get user profile videos
+   *     parameters:
+   *       - in: query
+   *         name: userId
+   *         schema:
+   *           type: integer
+   *           default: 0
+   *         description: User ID
+   *       - in: query
+   *         name: from
+   *         schema:
+   *           type: integer
+   *           default: 0
+   *         description: Pagination offset
+   *       - in: query
+   *         name: filter
+   *         schema:
+   *           type: string
+   *           default: "normal"
+   *         description: Filter type
+   *     responses:
+   *       200:
+   *         description: List of profile videos
+   *         content:
+   *           application/json:
+   *             schema:
+   *               type: object
+   *               properties:
+   *                 videos:
+   *                   type: array
+   *                   items:
+   *                     type: object
+   */
 router.get('/videos', async (req, res) => {
     const authUserId = req.user ? req.user.id : 0;
     const from = req.query['from'] ?? 0;
@@ -174,6 +299,34 @@ router.get('/videos', async (req, res) => {
     });
 });
 
+/**
+   * @swagger
+   * /update_token:
+   *   post:
+   *     tags: [Profile Routes]
+   *     summary: Update user token
+   *     requestBody:
+   *       required: true
+   *       content:
+   *         application/json:
+   *           schema:
+   *             type: object
+   *             properties:
+   *               token:
+   *                 type: string
+   *     responses:
+   *       200:
+   *         description: Token updated successfully
+   *         content:
+   *           application/json:
+   *             schema:
+   *               type: object
+   *               properties:
+   *                 token:
+   *                   type: string
+   *       401:
+   *         description: Unauthorized
+   */
 router.post("/update_token", async (req, res) => {
     const token = req.body["token"];
     const userId = req.user ? req.user.id : 0;
@@ -187,6 +340,34 @@ router.post("/update_token", async (req, res) => {
     }
   });
 
+  /**
+   * @swagger
+   * /follow:
+   *   post:
+   *     tags: [Profile Routes]
+   *     summary: Follow a user
+   *     requestBody:
+   *       required: true
+   *       content:
+   *         application/json:
+   *           schema:
+   *             type: object
+   *             properties:
+   *               userId:
+   *                 type: integer
+   *     responses:
+   *       200:
+   *         description: Follow status
+   *         content:
+   *           application/json:
+   *             schema:
+   *               type: object
+   *               properties:
+   *                 result:
+   *                   type: boolean
+   *       401:
+   *         description: Unauthorized
+   */
 router.post('/follow', async (req, res) => {
     if (!req.user) {
         res.status(401).send({
@@ -210,6 +391,34 @@ router.post('/follow', async (req, res) => {
     }
 });
 
+/**
+   * @swagger
+   * /unfollow:
+   *   post:
+   *     tags: [Profile Routes]
+   *     summary: Unfollow a user
+   *     requestBody:
+   *       required: true
+   *       content:
+   *         application/json:
+   *           schema:
+   *             type: object
+   *             properties:
+   *               userId:
+   *                 type: integer
+   *     responses:
+   *       200:
+   *         description: Unfollow status
+   *         content:
+   *           application/json:
+   *             schema:
+   *               type: object
+   *               properties:
+   *                 result:
+   *                   type: boolean
+   *       401:
+   *         description: Unauthorized
+   */
 router.post('/unfollow', async (req, res) => {
     if (!req.user) {
         res.status(401).send({
@@ -231,6 +440,32 @@ router.post('/unfollow', async (req, res) => {
     }
 });
 
+/**
+   * @swagger
+   * /followings:
+   *   get:
+   *     tags: [Profile Routes]
+   *     summary: Get user followings
+   *     parameters:
+   *       - in: query
+   *         name: userId
+   *         schema:
+   *           type: integer
+   *           default: 0
+   *         description: User ID
+   *     responses:
+   *       200:
+   *         description: List of followings
+   *         content:
+   *           application/json:
+   *             schema:
+   *               type: object
+   *               properties:
+   *                 users:
+   *                   type: array
+   *                   items:
+   *                     type: object
+   */
 router.get('/followings', async (req, res) => {
     const authUserId = req.user ? req.user.id : 0;
     const profileId = req.query['userId'] ?? 0;
@@ -240,6 +475,34 @@ router.get('/followings', async (req, res) => {
     });
 });
 
+/**
+   * @swagger
+   * /notifications:
+   *   get:
+   *     tags: [Profile Routes]
+   *     summary: Get user notifications
+   *     parameters:
+   *       - in: query
+   *         name: from
+   *         schema:
+   *           type: integer
+   *           default: 0
+   *         description: Pagination offset
+   *     responses:
+   *       200:
+   *         description: List of notifications
+   *         content:
+   *           application/json:
+   *             schema:
+   *               type: object
+   *               properties:
+   *                 notifications:
+   *                   type: array
+   *                   items:
+   *                     type: object
+   *       401:
+   *         description: Unauthorized
+   */
 router.get('/notifications', async (req, res) => {
     if (!req.user) {
         res.status(401).send({
@@ -255,6 +518,32 @@ router.get('/notifications', async (req, res) => {
     });
 });
 
+/**
+   * @swagger
+   * /followers:
+   *   get:
+   *     tags: [Profile Routes]
+   *     summary: Get user followers
+   *     parameters:
+   *       - in: query
+   *         name: userId
+   *         schema:
+   *           type: integer
+   *           default: 0
+   *         description: User ID
+   *     responses:
+   *       200:
+   *         description: List of followers
+   *         content:
+   *           application/json:
+   *             schema:
+   *               type: object
+   *               properties:
+   *                 users:
+   *                   type: array
+   *                   items:
+   *                     type: object
+   */
 router.get('/followers', async (req, res) => {
     const authUserId = req.user ? req.user.id : 0;
     const profileId = req.query['userId'] ?? 0;
@@ -276,6 +565,40 @@ const storage = multer.diskStorage({
     }
 })
 const imageUpload = multer({ storage: storage });
+
+/**
+   * @swagger
+   * /update:
+   *   post:
+   *     tags: [Profile Routes]
+   *     summary: Update user profile
+   *     requestBody:
+   *       required: true
+   *       content:
+   *         multipart/form-data:
+   *           schema:
+   *             type: object
+   *             properties:
+   *               picture:
+   *                 type: string
+   *                 format: binary
+   *               coverPicture:
+   *                 type: string
+   *                 format: binary
+   *               username:
+   *                 type: string
+   *     responses:
+   *       200:
+   *         description: Profile updated successfully
+   *         content:
+   *           application/json:
+   *             schema:
+   *               type: object
+   *       400:
+   *         description: Invalid username
+   *       401:
+   *         description: Unauthorized
+   */
 router.post('/update', imageUpload.fields([{ name: 'picture' }, { name: 'coverPicture' }]), async (req, res) => {
     if (!req.user) {
         res.status(401).send({
@@ -324,6 +647,38 @@ router.post('/update', imageUpload.fields([{ name: 'picture' }, { name: 'coverPi
     }
 });
 
+/**
+   * @swagger
+   * /reportUser:
+   *   post:
+   *     tags: [Profile Routes]
+   *     summary: Report a user
+   *     requestBody:
+   *       required: true
+   *       content:
+   *         application/json:
+   *           schema:
+   *             type: object
+   *             properties:
+   *               uUserId:
+   *                 type: integer
+   *               rReportId:
+   *                 type: integer
+   *               reason:
+   *                 type: string
+   *     responses:
+   *       200:
+   *         description: Report status
+   *         content:
+   *           application/json:
+   *             schema:
+   *               type: object
+   *               properties:
+   *                 result:
+   *                   type: boolean
+   *       401:
+   *         description: Unauthorized
+   */
 router.post('/reportUser', async (req, res) => {
     if (!req.user) {
         res.status(401).send({
@@ -343,6 +698,25 @@ router.post('/reportUser', async (req, res) => {
     });
 });
 
+/**
+   * @swagger
+   * /delete:
+   *   post:
+   *     tags: [Profile Routes]
+   *     summary: Delete user profile
+   *     responses:
+   *       200:
+   *         description: Profile deleted
+   *         content:
+   *           application/json:
+   *             schema:
+   *               type: object
+   *               properties:
+   *                 result:
+   *                   type: boolean
+   *       401:
+   *         description: Unauthorized
+   */
 router.post('/delete', async (req, res) => {
     if (!req.user) {
         res.status(401).send({
@@ -358,6 +732,36 @@ router.post('/delete', async (req, res) => {
     });
 });
 
+/**
+   * @swagger
+   * /blockUser:
+   *   post:
+   *     tags: [Profile Routes]
+   *     summary: Block a user
+   *     requestBody:
+   *       required: true
+   *       content:
+   *         application/json:
+   *           schema:
+   *             type: object
+   *             properties:
+   *               userId:
+   *                 type: integer
+   *               uUserId:
+   *                 type: integer
+   *               blockId:
+   *                 type: integer
+   *     responses:
+   *       200:
+   *         description: Block status
+   *         content:
+   *           application/json:
+   *             schema:
+   *               type: object
+   *               properties:
+   *                 result:
+   *                   type: boolean
+   */
 router.post('/blockUser', async (req, res) => {
     const userId = req.body['userId'] ?? null;
     const uUserId = req.body['uUserId'] ?? "";
@@ -370,6 +774,36 @@ router.post('/blockUser', async (req, res) => {
     });
 });
 
+/**
+   * @swagger
+   * /unblockUser:
+   *   post:
+   *     tags: [Profile Routes]
+   *     summary: Unblock a user
+   *     requestBody:
+   *       required: true
+   *       content:
+   *         application/json:
+   *           schema:
+   *             type: object
+   *             properties:
+   *               userId:
+   *                 type: integer
+   *               uUserId:
+   *                 type: integer
+   *               blockId:
+   *                 type: integer
+   *     responses:
+   *       200:
+   *         description: Unblock status
+   *         content:
+   *           application/json:
+   *             schema:
+   *               type: object
+   *               properties:
+   *                 result:
+   *                   type: boolean
+   */
 router.post('/unblockUser', async (req, res) => {
     const userId = req.body['userId'] ?? null;
     const uUserId = req.body['uUserId'] ?? "";
@@ -382,6 +816,38 @@ router.post('/unblockUser', async (req, res) => {
     });
 });
 
+/**
+   * @swagger
+   * /getInbox:
+   *   get:
+   *     tags: [Profile Routes]
+   *     summary: Get user inbox messages
+   *     parameters:
+   *       - in: query
+   *         name: from
+   *         schema:
+   *           type: integer
+   *           default: 0
+   *         description: Pagination offset
+   *     responses:
+   *       200:
+   *         description: Inbox messages
+   *         content:
+   *           application/json:
+   *             schema:
+   *               type: object
+   *               properties:
+   *                 message:
+   *                   type: string
+   *                 total:
+   *                   type: integer
+   *                 inbox:
+   *                   type: array
+   *                   items:
+   *                     type: object
+   *       401:
+   *         description: Unauthorized
+   */
 router.get('/getInbox', async (req, res) => {
     if (!req.user) {
         res.status(401).send({
@@ -399,6 +865,44 @@ router.get('/getInbox', async (req, res) => {
     });
 });
 
+/**
+   * @swagger
+   * /getMessages:
+   *   get:
+   *     tags: [Profile Routes]
+   *     summary: Get user messages
+   *     parameters:
+   *       - in: query
+   *         name: from
+   *         schema:
+   *           type: integer
+   *           default: 0
+   *         description: Pagination offset
+   *       - in: query
+   *         name: userId
+   *         schema:
+   *           type: integer
+   *           default: 0
+   *         description: User ID
+   *     responses:
+   *       200:
+   *         description: List of messages
+   *         content:
+   *           application/json:
+   *             schema:
+   *               type: object
+   *               properties:
+   *                 message:
+   *                   type: string
+   *                 total:
+   *                   type: integer
+   *                 messages:
+   *                   type: array
+   *                   items:
+   *                     type: object
+   *       401:
+   *         description: Unauthorized
+   */
 router.get('/getMessages', async (req, res) => {
     if (!req.user) {
         res.status(401).send({
