@@ -1,3 +1,6 @@
+const e = require('express');
+require('express-async-errors');
+const globalErrorHandler = require('./middelwares/errorHandler');
 const fs = require('fs');
 const path = require('path');
 const readline = require('readline');
@@ -11,8 +14,6 @@ const rl = readline.createInterface({
 });
 const http = require('http');
 const https = require('https');
-const e = require('express');
-
 const configPath = './config/config.js';
 const uploadsPath = './uploads';
 const swaggerUI = require('swagger-ui-express');
@@ -496,6 +497,8 @@ if (!fs.existsSync(configPath)) {
       res.status(500).send('Internal server error');
     }
   });
+
+  app.use(globalErrorHandler);
 
   var clients = {};
   async function sendEmit(userId, event, data) {
