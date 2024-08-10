@@ -1,6 +1,7 @@
 const e = require('express');
 require('express-async-errors');
-const globalErrorHandler = require('./middelwares/errorHandler');
+const globalErrorHandler = require('./middelwares/error_handler');
+const validate_Request = require('./middelwares/validate_request');
 const fs = require('fs');
 const path = require('path');
 const readline = require('readline');
@@ -18,6 +19,15 @@ const configPath = './config/config.js';
 const uploadsPath = './uploads';
 const swaggerUI = require('swagger-ui-express');
 const swaggerSpec = require('./config/swagger');
+const {body} = require("express-validator");
+const login_type = require("./enums/login_type");
+const account_type = require("./enums/account_type");
+const sendSuccess = require("./utils/send_success");
+const axios = require("axios");
+const geoip = require("geoip-lite");
+const AppError = require("./utils/appError");
+const db = require("./config/db_handler");
+
 
 console.log(chalk.blue('\nCopyright \u00A9 vativeApps 2023.') + ' Visit us at ' + chalk.underline.blue('https://www.vativeapps.com/') + ' for more information.');
 
@@ -225,6 +235,7 @@ if (!fs.existsSync(configPath)) {
   const discoverRoutes = require('./routes/discover_route');
   const soundRoutes = require('./routes/sound_route');
   const videoRoutes = require('./routes/video_route');
+  const lookUpRoutes = require('./routes/lookup_route');
   const constants = require('./config/constants');
 
   const adminRoute = require('./admin');
@@ -387,67 +398,103 @@ if (!fs.existsSync(configPath)) {
   app.use('/discover', userAuthorization(true), discoverRoutes);
   app.use('/sound', userAuthorization(true), soundRoutes);
   app.use('/video', userAuthorization(true), videoRoutes);
+  app.use('/lookup',userAuthorization(true),lookUpRoutes)
 
-  app.post('/join', async (req, res) => {
-    const email = req.body['email'] ?? null;
-    const uid = req.body['uid'] ?? null;
-    const name = req.body['name'] ?? null;
-    const appVersion = req.body["appVersion"] ?? null;
-    const phoneModel = req.body["phoneModel"] ?? null;
-    var login_type = req.body['login_type'] ?? null;
-    if (email && uid && appVersion && phoneModel && login_type) {
-      if (login_type == "google") {
-        login_type = 1;
-      } else if (login_type == "apple") {
-        login_type = 2;
-      } else if (login_type == "phone") {
-        login_type = 3;
+  app.post('/join',[
+      body("email")
+        .isEmail()
+        .notEmpty()
+        .withMessage("email must be a valid ")
+      ,body("name")
+        .notEmpty()
+        .withMessage("name must be provided")
+      ,body("accountType")
+        .isIn(Object.values(account_type))
+        .withMessage("account type must be provided")
+      ,body("loginType")
+        .isIn(Object.values(login_type))
+        .withMessage("login type must be provided")
+       ,body("oauthKey")
+        .if(body("loginType").not().equals(login_type.EMAIL))
+        .notEmpty()
+        .withMessage("oauth must be provided")
+        ,body("phoneModel")
+        .notEmpty()
+        .withMessage("phoneModel must be provided")
+      ,body("appVersion")
+        .notEmpty()
+        .isDecimal()
+        .withMessage("appVersion must be provided")
+    ,body("cityId")
+        .isNumeric()
+        .notEmpty()
+        .withMessage("city must be provided")
+      ,body("password")
+        .if(body("loginType").equals(login_type.EMAIL))
+        .isLength({min: 8})
+        .withMessage("password must be at least 8 characters")
+        .notEmpty()
+        .withMessage("password must be provided")
+      ,body("address")
+        .if(body("accountType").equals(account_type.BUSINESS))
+        .notEmpty()
+        .withMessage("address must be provided")
+      ,body("categoryId")
+        .if(body("accountType").equals(account_type.BUSINESS))
+        .notEmpty()
+        .isNumeric()
+        .isDecimal()
+        .withMessage("category must be provided")
+     ,body("phoneNumber")
+        .if(body("accountType").equals(account_type.BUSINESS))
+        .notEmpty()
+        .withMessage("phoneNumber must be provided")
+     ,body("websiteLink")
+        .if(body("accountType").equals(account_type.BUSINESS))
+        .notEmpty()
+        .withMessage("website link must be provided")
+      ],validate_Request,async (req, res) => {
+    let {email, oauthKey, name, appVersion, phoneModel, loginType, accountType, cityId, address, categoryId,
+      phoneNumber, websiteLink, password} = req.body;
+
+    const ipResponse = await axios.get('https://api.ipify.org?format=json');
+    const ip = ipResponse.data.ip;
+    console.log(ip);
+    const locate = geoip.lookup(ip);
+    const location = locate ? locate.country : "Unknown";
+    console.log("Location: " + location);
+    let response
+      if (loginType === login_type.GOOGLE) {
+        loginType = 1;
+      } else if (loginType === login_type.APPLE) {
+        loginType = 2;
+      } else if (loginType === login_type.FACEBOOK) {
+        loginType = 3;
+      } else if(loginType === login_type.EMAIL) {
+        loginType = 4;
+
+        // if (req.file != null) {
+        //   fs.unlinkSync(req.file.path);
+        // }
+        // res.status(400).send({
+        //   error: "invalid_params",
+        // });
+        // return;
+      }
+
+       response = await db.registerUser(oauthKey, name, email, loginType ===4? password: oauthKey, appVersion, phoneModel, loginType, location,cityId,address,categoryId,accountType, phoneNumber,websiteLink);
+      if (response instanceof  AppError) {
+        throw response
+      } else if(response){
+        response.user.password =  null
+        sendSuccess(res,200, response)
       } else {
-        login_type = 0;
         if (req.file != null) {
           fs.unlinkSync(req.file.path);
         }
-        res.status(400).send({
-          error: "invalid_params",
-        });
-        return;
+        throw new AppError("something went wrong while creating the user", 500);
       }
-      const ip = req.headers['x-forwarded-for'] || req.connection.remoteAddress;
-      let ipAddress = '';
 
-      if (ip.includes('::ffff:')) {
-        const parts = ip.split(':');
-        ipAddress = parts[3];
-      } else {
-        ipAddress = ip;
-      }
-      console.log(ipAddress)
-      var locate = geoip.lookup(ipAddress);
-
-      const location = locate ? locate.country : "Unknown";
-      console.log("Location: " + location);
-      const response = await db.registerUser(uid, name, email, uid, appVersion, phoneModel, login_type, location);
-      if (response) {
-        // Profile created
-        res.send({
-          user: response.user,
-        });
-      } else {
-        if (req.file != null) {
-          fs.unlinkSync(req.file.path);
-        }
-        res.status(400).send({
-          error: "user_not_created",
-        });
-      }
-    } else {
-      if (req.file != null) {
-        fs.unlinkSync(req.file.path);
-      }
-      res.status(400).send({
-        error: "invalid_params",
-      });
-    }
   });
 
   app.get('/web_login', async (req, res) => {

@@ -3,6 +3,10 @@ const crypto = require('crypto');
 const constants = require('./constants');
 const config = require('./config');
 const { truncate } = require('fs/promises');
+const {randomBytes, scrypt} = require("crypto");
+const {promisify} = require("util");
+const AppError = require("../utils/appError");
+const scryptAsync = promisify(scrypt)
 
 function getTime() {
     return Math.floor(new Date().getTime() / 1000)
@@ -671,22 +675,134 @@ class DbHandler {
             });
         }.bind(this));
     }
+    getUserByEmail(uid) {
+        return new Promise(function (resolve, reject) {
+            var query = "SELECT * FROM users WHERE email = ?";
+            var params = [uid];
+            query = mysql.format(query, params);
+            this.pool.getConnection(function (err, connection) {
+                connection.query(query, function (err, results, fields) {
+                    connection.release();
+                    if (err) {
+                        console.error("[Error]", err);
+                        resolve(null);
+                        return;
+                    }
+                    if (results && results.length > 0) {
+                        var user = results[0];
+                        user['instagram'] = user['instagram'] ?? "";
+                        user['facebook'] = user['facebook'] ?? "";
+                        user['twitter'] = user['twitter'] ?? "";
+                        user['profilePicture'] = user['profilePicture'] ?? "";
+                        user['about'] = user['about'] ?? "";
+                        user['isVerified'] = user['isVerified'] == 1;
+                        user['isPrivateLikes'] = user['isPrivateLikes'] == 1;
+                        resolve(user);
+                    } else {
+                        resolve(null);
+                    }
+                });
+            });
+        }.bind(this));
+    }
 
-    registerUser(uid, name, email, password, appVersion, phoneModel, login_type, location) {
+    getCitiesByCountryId(id) {
+        return new Promise(function (resolve, reject) {
+            let query = "SELECT * FROM cities WHERE country_id = ?";
+            const params = [id];
+            query = mysql.format(query, params);
+            this.pool.getConnection(function (err, connection) {
+                connection.query(query, function (err, results, fields) {
+                    connection.release();
+                    if (err) {
+                        console.error("[Error]", err);
+                        resolve(null);
+                        return;
+                    }
+                   resolve(results)
+                });
+            });
+        }.bind(this));
+    }
+
+    getAllBusinessTypes() {
+        return new Promise(function (resolve, reject) {
+            let query = "SELECT * FROM business_types";
+            query = mysql.format(query);
+            this.pool.getConnection(function (err, connection) {
+                connection.query(query, function (err, results, fields) {
+                    connection.release();
+                    if (err) {
+                        console.error("[Error]", err);
+                        resolve(null);
+                        return;
+                    }
+                    resolve(results)
+                });
+            });
+        }.bind(this));
+    }
+    getBusinessTypesCategoryByBusinessTypeId(id) {
+        return new Promise(function (resolve, reject) {
+            let query = "SELECT * FROM business_types_category WHERE business_types_id = ?";
+            const params = [id];
+            query = mysql.format(query,params);
+            this.pool.getConnection(function (err, connection) {
+                connection.query(query, function (err, results, fields) {
+                    connection.release();
+                    if (err) {
+                        console.error("[Error]", err);
+                        resolve(null);
+                        return;
+                    }
+                    resolve(results)
+                });
+            });
+        }.bind(this));
+    }
+
+    getAllCountries() {
+        return new Promise(function (resolve, reject) {
+            var query = "SELECT * FROM countries";
+            query = mysql.format(query);
+            this.pool.getConnection(function (err, connection) {
+                connection.query(query, function (err, results, fields) {
+                    connection.release();
+                    if (err) {
+                        console.error("[Error]", err);
+                        resolve(null);
+                        return;
+                    }
+                    resolve(results)
+                });
+            });
+        }.bind(this));
+    }
+
+    registerUser(uid, name, email, password, appVersion, phoneModel, login_type, location,cityId,address,categoryId, accountType,phoneNumber,websiteLink) {
         return new Promise(async resolve => {
+
+            if (login_type === 4) {
+                var existingUser  = await this.getUserByEmail(email)
+                if (existingUser){
+                    resolve( new AppError("Email is already registered!", 401));
+                }
+                uid  = crypto.randomBytes(64).toString('hex');
+            }
+
             var userObj = await this.getUserByUid(uid);
             if (userObj) {
                 // console.log(userObj);
-                if (userObj.provider == login_type) {
+                if (userObj.provider === login_type) {
                     resolve({ user: userObj });
                 } else {
                     resolve(null);
                 }
             } else {
-                var query = "INSERT IGNORE INTO users (name, email, username, password, auth, appVersion, phoneModel, country, provider, createTime, uid, refferal_code) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);";
+                var query = "INSERT IGNORE INTO users (name, email, username, password, auth, appVersion, phoneModel, country, provider, createTime, uid, refferal_code, city_id, address, business_types_category_id, accountType, phone, websiteLink) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,? ,? ,? ,? ,?);";
                 const auth = crypto.randomBytes(64).toString('hex');
                 const reff = crypto.randomBytes(3).toString('hex');
-                var params = [name, email, uid, password, auth, appVersion, phoneModel, location, login_type, getTime(), uid, reff];
+                var params = [name, email, uid, password, auth, appVersion, phoneModel, location, login_type, getTime(), uid, reff,cityId,address,categoryId,accountType,phoneNumber,websiteLink];
                 query = mysql.format(query, params);
                 this.pool.getConnection(function (err, connection) {
                     connection.query(query, async function (err, results, fields) {
@@ -2208,7 +2324,20 @@ class DbHandler {
         }.bind
             (this));
     }
+    async toHash(password){
+        const salt = crypto.randomBytes(8).toString('hex');
+        const buf = (await scryptAsync(password, salt,64));
+        return `${buf.toString('hex')}.${salt}`
+    }
+
+    async compare(storedPassword, suppliedPassword){
+        const [hashedPassword,salt] = storedPassword.split('.');
+        const buf = (await scryptAsync(suppliedPassword, salt,64))
+        return buf.toString('hex')===hashedPassword;
+    }
 }
+
+
 module.exports = new DbHandler(config.dbConfig.dbHost,
     config.dbConfig.dbUsername,
     config.dbConfig.dbPassword,
