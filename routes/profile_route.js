@@ -599,7 +599,7 @@ const imageUpload = multer({ storage: storage });
    *       401:
    *         description: Unauthorized
    */
-router.post('/update', imageUpload.fields([{ name: 'picture' }, { name: 'coverPicture' }]), async (req, res) => {
+router.post('/update', imageUpload.single('profilePic'), async (req, res) => {
     if (!req.user) {
         res.status(401).send({
             error: "unauthorized"

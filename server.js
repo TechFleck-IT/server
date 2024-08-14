@@ -27,6 +27,19 @@ const axios = require("axios");
 const geoip = require("geoip-lite");
 const AppError = require("./utils/appError");
 const db = require("./config/db_handler");
+const multer = require("multer");
+const {postAddUser} = require("./controller/users/users_controller");
+const express = require("express");
+const profileRoutes = require("./routes/profile_route");
+const discoverRoutes = require("./routes/discover_route");
+const soundRoutes = require("./routes/sound_route");
+const videoRoutes = require("./routes/video_route");
+const lookUpRoutes = require("./routes/lookup_route");
+const bodyParser = require("body-parser");
+
+
+
+
 
 
 console.log(chalk.blue('\nCopyright \u00A9 vativeApps 2023.') + ' Visit us at ' + chalk.underline.blue('https://www.vativeapps.com/') + ' for more information.');
@@ -344,14 +357,31 @@ if (!fs.existsSync(configPath)) {
 
   global.sendFirebaseNotification = sendFirebaseNotification;
   global.addNotification = addNotification;
+  app.use(express.json());
+  app.use(bodyParser.urlencoded({ extended: false }));
 
+  const storage = multer.diskStorage({
+    destination: function (req, file, cb) {
+      cb(null, 'uploads/users')
+    },
+    filename: function (req, file, cb) {
+      const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9) + path.extname(file.originalname);
+      cb(null, uniqueSuffix)
+    }
+  })
+
+  const uploadUserPicture = multer({ storage: storage} );
   // for parsing application/json
+  // app.use(urlencodedParser)
   app.set('view engine', 'ejs');
   app.set('trust proxy', true);
-  app.use(express.json());
+  // app.use(express.json());
   app.use(express.static(__dirname, { dotfiles: 'allow' }));
   app.use(express.static(__dirname + '/public'));
+  app.use(express.static(__dirname + '/uploads'));
   app.use('/uploads', express.static('uploads'));
+
+  app.use(express.static("config"));
   app.use('/admin', adminRoute);
 
   app.use(require('express-status-monitor')());
@@ -394,66 +424,34 @@ if (!fs.existsSync(configPath)) {
     });
   }
 
-  app.use('/profile', userAuthorization(true), profileRoutes);
-  app.use('/discover', userAuthorization(true), discoverRoutes);
-  app.use('/sound', userAuthorization(true), soundRoutes);
-  app.use('/video', userAuthorization(true), videoRoutes);
-  app.use('/lookup',userAuthorization(true),lookUpRoutes)
+  app.get('/download',userAuthorization(true), (req, res) => {
 
-  app.post('/join',[
-      body("email")
-        .isEmail()
-        .notEmpty()
-        .withMessage("email must be a valid ")
-      ,body("name")
-        .notEmpty()
-        .withMessage("name must be provided")
-      ,body("accountType")
-        .isIn(Object.values(account_type))
-        .withMessage("account type must be provided")
-      ,body("loginType")
-        .isIn(Object.values(login_type))
-        .withMessage("login type must be provided")
-       ,body("oauthKey")
-        .if(body("loginType").not().equals(login_type.EMAIL))
-        .notEmpty()
-        .withMessage("oauth must be provided")
-        ,body("phoneModel")
-        .notEmpty()
-        .withMessage("phoneModel must be provided")
-      ,body("appVersion")
-        .notEmpty()
-        .isDecimal()
-        .withMessage("appVersion must be provided")
-    ,body("cityId")
-        .isNumeric()
-        .notEmpty()
-        .withMessage("city must be provided")
-      ,body("password")
-        .if(body("loginType").equals(login_type.EMAIL))
-        .isLength({min: 8})
-        .withMessage("password must be at least 8 characters")
-        .notEmpty()
-        .withMessage("password must be provided")
-      ,body("address")
-        .if(body("accountType").equals(account_type.BUSINESS))
-        .notEmpty()
-        .withMessage("address must be provided")
-      ,body("categoryId")
-        .if(body("accountType").equals(account_type.BUSINESS))
-        .notEmpty()
-        .isNumeric()
-        .isDecimal()
-        .withMessage("category must be provided")
-     ,body("phoneNumber")
-        .if(body("accountType").equals(account_type.BUSINESS))
-        .notEmpty()
-        .withMessage("phoneNumber must be provided")
-     ,body("websiteLink")
-        .if(body("accountType").equals(account_type.BUSINESS))
-        .notEmpty()
-        .withMessage("website link must be provided")
-      ],validate_Request,async (req, res) => {
+    if (req.user == null)
+      throw new AppError("unauthorized",401);
+    const filename = req.query.filename;
+    const directoryPath = path.join(__dirname, 'uploads'); // Ensure this path matches your upload destination
+
+    res.download(`${directoryPath}/${filename}`, filename, (err) => {
+      if (err) {
+        res.status(500).json({ status: 'fail', message: 'File could not be downloaded' });
+      }
+    });
+  });
+
+  app.post('/login',async (req, res) => {
+    let {email , password} = req.body;
+      let user = await db.getUserByEmail(email)
+    if (user) {
+      if (password === user.password){
+        return sendSuccess(res,200, {user})
+      }
+    }
+
+    throw new AppError("Invalid credentials",401);
+
+  })
+
+  app.post('/join',uploadUserPicture.single("picture"),async (req, res) => {
     let {email, oauthKey, name, appVersion, phoneModel, loginType, accountType, cityId, address, categoryId,
       phoneNumber, websiteLink, password} = req.body;
 
@@ -481,8 +479,14 @@ if (!fs.existsSync(configPath)) {
         // });
         // return;
       }
+    let pictureUrl = "";
+    if (req.file) {
+      pictureUrl =  "users/" + req.file.filename;
+    }
 
-       response = await db.registerUser(oauthKey, name, email, loginType ===4? password: oauthKey, appVersion, phoneModel, loginType, location,cityId,address,categoryId,accountType, phoneNumber,websiteLink);
+    response = await db.registerUser(oauthKey, name, email, loginType ===4? password: oauthKey, appVersion, phoneModel, loginType, location,cityId,address,categoryId,accountType, phoneNumber,websiteLink, pictureUrl);
+
+
       if (response instanceof  AppError) {
         throw response
       } else if(response){
@@ -544,6 +548,12 @@ if (!fs.existsSync(configPath)) {
       res.status(500).send('Internal server error');
     }
   });
+
+  app.use('/profile', userAuthorization(true), profileRoutes);
+  app.use('/discover', userAuthorization(true), discoverRoutes);
+  app.use('/sound', userAuthorization(true), soundRoutes);
+  app.use('/video', userAuthorization(true), videoRoutes);
+  app.use('/lookup',userAuthorization(true),lookUpRoutes)
 
   app.use(globalErrorHandler);
 

@@ -779,7 +779,7 @@ class DbHandler {
         }.bind(this));
     }
 
-    registerUser(uid, name, email, password, appVersion, phoneModel, login_type, location,cityId,address,categoryId, accountType,phoneNumber,websiteLink) {
+    registerUser(uid, name, email, password, appVersion, phoneModel, login_type, location,cityId,address,categoryId, accountType,phoneNumber,websiteLink, profilePic) {
         return new Promise(async resolve => {
 
             if (login_type === 4) {
@@ -799,10 +799,10 @@ class DbHandler {
                     resolve(null);
                 }
             } else {
-                var query = "INSERT IGNORE INTO users (name, email, username, password, auth, appVersion, phoneModel, country, provider, createTime, uid, refferal_code, city_id, address, business_types_category_id, accountType, phone, websiteLink) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,? ,? ,? ,? ,?);";
+                var query = "INSERT IGNORE INTO users (name, email, username, password, auth, appVersion, phoneModel, country, provider, createTime, uid, refferal_code, city_id, address, business_types_category_id, accountType, phone, websiteLink, profilePicture ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,? ,? ,? ,? ,?, ?);";
                 const auth = crypto.randomBytes(64).toString('hex');
                 const reff = crypto.randomBytes(3).toString('hex');
-                var params = [name, email, uid, password, auth, appVersion, phoneModel, location, login_type, getTime(), uid, reff,cityId,address,categoryId,accountType,phoneNumber,websiteLink];
+                var params = [name, email, uid, password, auth, appVersion, phoneModel, location, login_type, getTime(), uid, reff,cityId,address,categoryId,accountType,phoneNumber,websiteLink, profilePic];
                 query = mysql.format(query, params);
                 this.pool.getConnection(function (err, connection) {
                     connection.query(query, async function (err, results, fields) {

@@ -105,6 +105,7 @@ const imageFolder = './uploads/images';
 const soundAlbumFolder = './uploads/sound_album';
 const giftCategoryFolder = './uploads/gift_category';
 const storiesFolder = './uploads/stories';
+const userFolder = "./uploads/users"
 if (!fs.existsSync(appIconFolder)) {
   fs.mkdirSync(appIconFolder);
 }
@@ -128,6 +129,9 @@ if (!fs.existsSync(giftsFolder)) {
 }
 if (!fs.existsSync(levelsFolder)) {
   fs.mkdirSync(levelsFolder);
+}
+if (!fs.existsSync(userFolder)) {
+    fs.mkdirSync(userFolder);
 }
 
 router.get('/', getDashboardData);
