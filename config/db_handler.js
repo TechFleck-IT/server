@@ -174,7 +174,7 @@ class DbHandler {
         }.bind(this));
     }
 
-    uploadVideo(authUserId, videoPath, thumbnailUrl, gifUrl, videoReference, caption, soundId, allowComments, allowSharing, isPrivate, allowDuet, allowGifts, exclusiveAmount, duration, height, width) {
+    uploadVideo(authUserId, videoPath, thumbnailUrl, gifUrl, videoReference, caption, soundId, allowComments, allowSharing, isPrivate, allowDuet, allowGifts, exclusiveAmount, duration, height, width, description, type, location) {
         return new Promise(async resolve => {
             const promisePool = this.pool.promise();
             // const connection = await promisePool.getConnection();
@@ -182,8 +182,8 @@ class DbHandler {
             const tags = (caption.match(/#\w+/g) || []).map(tag => tag.slice(1));
             const cleanTags = hashtags.join(', ');
             const cleanTitle = caption.replace(/#[\w\u0590-\u05ff]+/g, '').trim();
-            var params = [authUserId, cleanTitle, cleanTags, videoPath, thumbnailUrl, gifUrl, videoReference, getTime(), soundId, allowComments, allowSharing, allowDuet, isPrivate, allowGifts, exclusiveAmount > 0, exclusiveAmount, height, width];
-            const [rows, fields] = await promisePool.query("INSERT INTO videos (user_id, title, tags, videoUrl, thumbnailUrl, videoGifUrl, videoGifPath, videoTime, soundId, allowComments, allowSharing, allowDuet, isPrivate, receiveGifts, isExclusive, exclusiveAmount, height, width) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);", params);
+            var params = [authUserId, cleanTitle, cleanTags, videoPath, thumbnailUrl, gifUrl, videoReference, getTime(), soundId, allowComments, allowSharing, allowDuet, isPrivate, allowGifts, exclusiveAmount > 0, exclusiveAmount, height, width, description, type, location];
+            const [rows, fields] = await promisePool.query("INSERT INTO videos (user_id, title, tags, videoUrl, thumbnailUrl, videoGifUrl, videoGifPath, videoTime, soundId, allowComments, allowSharing, allowDuet, isPrivate, receiveGifts, isExclusive, exclusiveAmount, height, width, description, video_type_id, city_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);", params);
             if (rows.insertId) {
                 const videoId = rows.insertId;
                 for (const tag of tags) {
@@ -248,8 +248,8 @@ class DbHandler {
         return new Promise(async resolve => {
             const promisePool = this.pool.promise();
             // const connection = await promisePool.getConnection();
-            var params = [authUserId, authUserId, authUserId, authUserId, videoId];
-            const [rows, fields] = await promisePool.query("SELECT s.title as 'sound_title', (? = v.user_id) as viewer_own, v.*, u.name, u.profilePicture, u.username, EXISTS(SELECT * FROM likes WHERE video_id = v.id AND user_id = ?) as viewer_liked, CASE WHEN exclusiveAmount = 0 THEN 1 ELSE EXISTS(SELECT id FROM purchased_content WHERE user_id = ? AND video_id = v.id) END as isUnlocked, EXISTS(SELECT id FROM followers WHERE follower = ? AND following = u.id) as viewer_following FROM videos v JOIN users u ON u.id = v.user_id LEFT JOIN sounds s ON s.id = v.soundId WHERE v.id = ?", params);
+            var params = [authUserId, authUserId, authUserId, videoId];
+            const [rows, fields] = await promisePool.query("SELECT s.title as 'sound_title',(? = v.user_id) as viewer_own, v.*, u.name, u.profilePicture, u.username, EXISTS(SELECT * FROM likes WHERE video_id = v.id AND user_id = ?) as viewer_liked, EXISTS(SELECT id FROM followers WHERE follower = ? AND following = u.id) as viewer_following FROM videos v JOIN users u ON u.id = v.user_id LEFT JOIN sounds s ON s.id = v.soundId WHERE v.id = ?", params);
             if (rows.length > 0) {
                 resolve(this.parseVideoObject(rows[0]));
             } else {
@@ -779,6 +779,24 @@ class DbHandler {
         }.bind(this));
     }
 
+    getVideoTypes() {
+        return new Promise(function (resolve, reject) {
+            var query = "SELECT * FROM video_type";
+            query = mysql.format(query);
+            this.pool.getConnection(function (err, connection) {
+                connection.query(query, function (err, results, fields) {
+                    connection.release();
+                    if (err) {
+                        console.error("[Error]", err);
+                        resolve(null);
+                        return;
+                    }
+                    resolve(results)
+                });
+            });
+        }.bind(this));
+    }
+
     registerUser(uid, name, email, password, appVersion, phoneModel, login_type, location,cityId,address,categoryId, accountType,phoneNumber,websiteLink, profilePic) {
         return new Promise(async resolve => {
 
@@ -1221,8 +1239,26 @@ class DbHandler {
     getDiscoverVideos(userId, searchQuery, from = 0, threshold = 15) {
         return new Promise(resolve => {
             if (searchQuery == "") {
-                var query = "SELECT s.title AS 'sound_title', albumPhotoUrl, (? = v.user_id) AS viewer_own, v.*, u.name, u.profilePicture, u.username, u.levelXP, EXISTS(SELECT * FROM likes WHERE video_id = v.id AND user_id = ?) AS viewer_liked, CASE WHEN exclusiveAmount = 0 THEN 1 ELSE EXISTS(SELECT id FROM purchased_content WHERE user_id = ? AND video_id = v.id) END AS isUnlocked, EXISTS(SELECT id FROM followers WHERE follower = ? AND following = u.id) AS viewer_following, (v.comments + v.likes + v.views) * (NOW() - v.videoTime) * RAND() AS priority FROM videos v JOIN users u ON u.id = v.user_id LEFT JOIN sounds s ON s.id = v.soundId LEFT JOIN ad_viewed av ON av.video_id = v.id AND av.user_id = ? WHERE v.isPrivate = 0 ORDER BY priority DESC LIMIT ?, ?";
-                var params = [userId, userId, userId, userId, userId, parseInt(from), parseInt(threshold)];
+                var query = "SELECT s.title                                                                  AS 'sound_title',\n" +
+                    "       albumPhotoUrl,\n" +
+                    "       (? = v.user_id)                                                          AS viewer_own,\n" +
+                    "       v.*,\n" +
+                    "       u.name,\n" +
+                    "       u.profilePicture,\n" +
+                    "       u.username,\n" +
+                    "       u.levelXP,\n" +
+                    "       EXISTS(SELECT * FROM followers fs WHERE u.id = fs.following AND fs.follower = ?)        AS is_following,\n" +
+                    "       EXISTS(SELECT * FROM likes WHERE video_id = v.id AND user_id = ?)        AS viewer_liked,\n" +
+                    "       EXISTS(SELECT id FROM followers WHERE follower = ? AND following = u.id) AS viewer_following,\n" +
+                    "       (v.comments + v.likes + v.views) * (NOW() - v.videoTime) * RAND()        AS priority\n" +
+                    "FROM videos v\n" +
+                    "         JOIN users u ON u.id = v.user_id\n" +
+                    "         LEFT JOIN sounds s ON s.id = v.soundId\n" +
+                    "         LEFT JOIN ad_viewed av ON av.video_id = v.id AND av.user_id = ?\n" +
+                    "WHERE v.isPrivate = 0\n" +
+                    "ORDER BY priority DESC\n" +
+                    "LIMIT ?, ?";
+                var params = [userId, userId, userId,userId, userId, parseInt(from), parseInt(threshold)];
             } else {
                 var query = "SELECT s.title as 'sound_title', albumPhotoUrl, (? = v.user_id) as viewer_own, v.*, u.name, u.profilePicture, u.username, u.levelXP, EXISTS(SELECT * FROM likes WHERE video_id = v.id AND user_id = ?) as viewer_liked, CASE WHEN exclusiveAmount = 0 THEN 1 ELSE EXISTS(SELECT id FROM purchased_content WHERE user_id = ? AND video_id = v.id) END as isUnlocked, EXISTS(SELECT id FROM followers WHERE follower = ? AND following = u.id) as viewer_following, LOG10(ABS(v.likes + views) + v.videoTime / 300000) as score FROM videos v JOIN users u ON u.id = v.user_id LEFT JOIN sounds s ON s.id = v.soundId WHERE v.title LIKE CONCAT('%', ?, '%') ORDER BY id DESC LIMIT ?, ?";
                 var params = [userId, userId, userId, userId, searchQuery, parseInt(from), parseInt(threshold)];
@@ -1909,6 +1945,7 @@ class DbHandler {
                 "levelName": obj["levelName"] ?? "",
                 "levelIcon": obj["levelIcon"] ?? "",
                 "levelColor": obj["levelColor"] ?? "",
+                "isfollowing": obj["is_following"] !== 0,
             },
         };
         if (obj.soundId) {

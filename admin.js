@@ -106,6 +106,9 @@ const soundAlbumFolder = './uploads/sound_album';
 const giftCategoryFolder = './uploads/gift_category';
 const storiesFolder = './uploads/stories';
 const userFolder = "./uploads/users"
+const videoFolder = "./uploads/videos"
+const gifsFolder = "./uploads/gifs"
+
 if (!fs.existsSync(appIconFolder)) {
   fs.mkdirSync(appIconFolder);
 }
@@ -132,6 +135,12 @@ if (!fs.existsSync(levelsFolder)) {
 }
 if (!fs.existsSync(userFolder)) {
     fs.mkdirSync(userFolder);
+}
+if (!fs.existsSync(videoFolder)) {
+    fs.mkdirSync(videoFolder);
+}
+if (!fs.existsSync(gifsFolder)) {
+    fs.mkdirSync(gifsFolder);
 }
 
 router.get('/', getDashboardData);

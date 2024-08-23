@@ -83,7 +83,7 @@ const upload = multer({ storage: videoStorage })
    *               video:
    *                 type: string
    *                 format: binary
-   *               caption:
+   *               title:
    *                 type: string
    *               sound_id:
    *                 type: integer
@@ -132,7 +132,10 @@ router.post('/upload', upload.single('video'), async (req, res) => {
         return;
     }
     const uploadAddress = global.hostAddress + "uploads/";
-    const caption = req.body['caption'] ?? "";
+    const title = req.body['title'] ?? "";
+    const description = req.body['description'] ?? "";
+    const type = req.body['type'] ?? 1;
+    const location = req.body['location'] ?? 1;
     let soundId = req.body.sound_id ?? 0;
     const allowComments = req.body['allowComments'] ?? false;
     const allowSharing = req.body['allowSharing'] ?? false;
@@ -218,18 +221,18 @@ router.post('/upload', upload.single('video'), async (req, res) => {
             }
         }
 
-        const hashtags = caption.match(/#[\w\u0590-\u05ff]+/g) || [];
+        const hashtags = title.match(/#[\w\u0590-\u05ff]+/g) || [];
         const tags = hashtags.join(',');
 
         let dbResponse;
         if (gifPath) {
             const gifResponse = await upload_manager.upload({ key: `gifs`, fileReference: gifCompletePath, contentType: mime.lookup(gifCompletePath), fileName: gifName });
-            dbResponse = await db.uploadVideo(req.user.id, videoResponse.Location, thumbnailResponse.Location, gifResponse.Location, videoReference, caption, soundId, allowComments, allowSharing, private, allowDuet, allowGifts, exclusiveAmount, duration, height, width);
+            dbResponse = await db.uploadVideo(req.user.id, videoResponse.Location, thumbnailResponse.Location, gifResponse.Location, videoReference, title, soundId, allowComments, allowSharing, private, allowDuet, allowGifts, exclusiveAmount, duration, height, width, description, type, location);
             res.send(dbResponse);
             return;
 
         } else {
-            dbResponse = await db.uploadVideo(req.user.id, videoResponse.Location, thumbnailResponse.Location, thumbnailResponse.Location, videoReference, caption, soundId, allowComments, allowSharing, private, allowDuet, allowGifts, exclusiveAmount, duration, height, width);
+            dbResponse = await db.uploadVideo(req.user.id, videoResponse.Location, thumbnailResponse.Location, thumbnailResponse.Location, videoReference, title, soundId, allowComments, allowSharing, private, allowDuet, allowGifts, exclusiveAmount, duration, height, width, description, type, location);
             res.send(dbResponse);
             return;
         }

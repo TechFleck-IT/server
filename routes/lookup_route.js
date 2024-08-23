@@ -24,4 +24,9 @@ router.get('/category/business-type/:id', async (req, res) => {
     sendSuccess(res,200, category);
 });
 
+router.get('/video-types', async (req, res) => {
+    const category = await db.getVideoTypes();
+    sendSuccess(res,200, category);
+});
+
 module.exports = router
