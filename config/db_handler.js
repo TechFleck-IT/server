@@ -380,6 +380,30 @@ class DbHandler {
         }.bind(this));
     }
 
+    bookmark(userId, videoId, value) {
+        return new Promise(function (resolve, reject) {
+            if (value) {
+                var query = "INSERT IGNORE INTO bookmark (video_id, user_id) VALUES (?, ?)";
+                var params = [videoId, userId];
+            } else {
+                var query = "DELETE FROM bookmark WHERE user_id = ? AND video_id = ?";
+                var params = [userId, videoId];
+            }
+            query = mysql.format(query, params);
+            this.pool.getConnection(function (err, connection) {
+                connection.query(query, async function (err, results, fields) {
+                    if (err) {
+                        console.log(err);
+                        resolve(false);
+                    } else {
+                        resolve(true)
+                    }
+                    connection.release();
+                });
+            });
+        }.bind(this));
+    }
+
     markVideoViewed(userId, videoId, own) {
         return new Promise(async (resolve) => {
             const promisePool = this.pool.promise();
@@ -1239,18 +1263,21 @@ class DbHandler {
     getDiscoverVideos(userId, searchQuery, from = 0, threshold = 15) {
         return new Promise(resolve => {
             if (searchQuery == "") {
-                var query = "SELECT s.title                                                                  AS 'sound_title',\n" +
+                var query = "SELECT s.title                                                                          AS 'sound_title',\n" +
                     "       albumPhotoUrl,\n" +
-                    "       (? = v.user_id)                                                          AS viewer_own,\n" +
+                    "       (? = v.user_id)                                                                  AS viewer_own,\n" +
                     "       v.*,\n" +
                     "       u.name,\n" +
                     "       u.profilePicture,\n" +
                     "       u.username,\n" +
                     "       u.levelXP,\n" +
-                    "       EXISTS(SELECT * FROM followers fs WHERE u.id = fs.following AND fs.follower = ?)        AS is_following,\n" +
-                    "       EXISTS(SELECT * FROM likes WHERE video_id = v.id AND user_id = ?)        AS viewer_liked,\n" +
-                    "       EXISTS(SELECT id FROM followers WHERE follower = ? AND following = u.id) AS viewer_following,\n" +
-                    "       (v.comments + v.likes + v.views) * (NOW() - v.videoTime) * RAND()        AS priority\n" +
+                    "       EXISTS(SELECT * FROM followers fs WHERE u.id = fs.following AND fs.follower = ?) AS is_following,\n" +
+                    "       EXISTS(SELECT * FROM likes WHERE video_id = v.id AND user_id = ?)                AS viewer_liked,\n" +
+                    "       EXISTS(SELECT id FROM followers WHERE follower = ? AND following = u.id)         AS viewer_following,\n" +
+                    "       EXISTS(SELECT * FROM bookmark WHERE user_id = ? AND video_id = v.id)             AS isBookMarked,\n" +
+                    "       (SELECT COUNT(*) FROM bookmark WHERE video_id = v.id)                            AS totalBookMarks,\n" +
+                    "       (SELECT count(*) FROM followers WHERE following = u.id)                          AS totalUserFollowers,\n" +
+                    "       (v.comments + v.likes + v.views) * (NOW() - v.videoTime) * RAND()                AS priority\n" +
                     "FROM videos v\n" +
                     "         JOIN users u ON u.id = v.user_id\n" +
                     "         LEFT JOIN sounds s ON s.id = v.soundId\n" +
@@ -1258,7 +1285,7 @@ class DbHandler {
                     "WHERE v.isPrivate = 0\n" +
                     "ORDER BY priority DESC\n" +
                     "LIMIT ?, ?";
-                var params = [userId, userId, userId,userId, userId, parseInt(from), parseInt(threshold)];
+                var params = [userId, userId, userId,userId, userId, userId, parseInt(from) * parseInt(threshold), parseInt(threshold)];
             } else {
                 var query = "SELECT s.title as 'sound_title', albumPhotoUrl, (? = v.user_id) as viewer_own, v.*, u.name, u.profilePicture, u.username, u.levelXP, EXISTS(SELECT * FROM likes WHERE video_id = v.id AND user_id = ?) as viewer_liked, CASE WHEN exclusiveAmount = 0 THEN 1 ELSE EXISTS(SELECT id FROM purchased_content WHERE user_id = ? AND video_id = v.id) END as isUnlocked, EXISTS(SELECT id FROM followers WHERE follower = ? AND following = u.id) as viewer_following, LOG10(ABS(v.likes + views) + v.videoTime / 300000) as score FROM videos v JOIN users u ON u.id = v.user_id LEFT JOIN sounds s ON s.id = v.soundId WHERE v.title LIKE CONCAT('%', ?, '%') ORDER BY id DESC LIMIT ?, ?";
                 var params = [userId, userId, userId, userId, searchQuery, parseInt(from), parseInt(threshold)];
@@ -1935,8 +1962,11 @@ class DbHandler {
             "height": obj["height"],
             "width": obj["width"],
             "views": obj["views"],
+            "isBookMarked": obj["isBookMarked"] !== 0,
+            "totalBookMarks": obj["totalBookMarks"],
             // User node
             "user": {
+                "totalFollowers": obj["totalUserFollowers"],
                 "id": obj["user_id"] ?? 0,
                 "name": obj["name"] ?? "",
                 "username": obj["username"] ?? "",
@@ -2104,7 +2134,6 @@ class DbHandler {
                                         type: JSON.parse(message.message).type,
                                         message: JSON.parse(message.message).text
                                     },
-                                    "sentTime": message.sentTime,
                                     "sender": {
                                         "id": message.user_id,
                                         "name": message.senderName,

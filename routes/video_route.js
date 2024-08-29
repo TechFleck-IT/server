@@ -514,4 +514,22 @@ router.post('/deleteComment', async (req, res) => {
     });
 });
 
+router.post('/bookmark', async (req, res) => {
+    if (!req.user) {
+        res.status(401).send({
+            error: "unauthorized"
+        });
+        return;
+    }
+    // const token = req.body["token"];
+    const token = '';
+    const videoId = req.body['video_id'] ?? 0;
+    const value = req.body['value'] ?? false;
+    const response = await db.bookmark(req.user.id, videoId, value);
+    res.send({
+        "result": response,
+    });
+});
+
+
 module.exports = router
