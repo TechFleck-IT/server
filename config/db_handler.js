@@ -1480,10 +1480,20 @@ class DbHandler {
         });
     }
 
-    getReplies(userId, commentId, from = 0) {
+    getReplies(userId, commentId, from = 0, limit= 15) {
         return new Promise(resolve => {
-            var query = "SELECT c.*, u.name, u.profilePicture, u.username, EXISTS(SELECT * FROM comment_likes WHERE user_id = ? AND comment_id = c.id) as liked, CASE WHEN EXISTS(SELECT user_id FROM comments WHERE user_id = ? AND id = c.id) THEN 1 ELSE 0 END as own FROM comments c JOIN users u ON u.id = c.user_id WHERE parentId = ?";
-            var params = [userId, userId, commentId, parseInt(from)];
+            var query = "SELECT c.*,\n" +
+                "       u.name,\n" +
+                "       u.profilePicture,\n" +
+                "       u.username,\n" +
+                "       EXISTS(SELECT * FROM comment_likes WHERE user_id = ? AND comment_id = c.id)                      as liked,\n" +
+                "       CASE WHEN EXISTS(SELECT user_id FROM comments WHERE user_id = ? AND id = c.id) THEN 1 ELSE 0 END as own,\n" +
+                "       (SELECT COUNT(*) FROM comment_likes WHERE  comment_id = c.id) AS total_likes\n" +
+                "FROM comments c\n" +
+                "         JOIN users u ON u.id = c.user_id\n" +
+                "WHERE parentId = ?\n" +
+                "LIMIT ?, ?";
+            var params = [userId, userId, commentId, parseInt(from) * parseInt(limit), parseInt(limit) ];
             query = mysql.format(query, params);
             this.pool.getConnection(function (err, connection) {
                 connection.query(query, async function (err, results, fields) {
@@ -1505,7 +1515,7 @@ class DbHandler {
                                     "video_id": e.video_id,
                                     "time": e.commentTime,
                                     "replies": e.replies,
-                                    "likes": e.likes,
+                                    "likes": e.total_likes,
                                     "user": {
                                         "id": e.user_id,
                                         "name": e.name,
@@ -1522,10 +1532,21 @@ class DbHandler {
         });
     }
 
-    getComments(userId, videoId, from = 0) {
+    getComments(userId, videoId, from = 0, limit = 15) {
         return new Promise(resolve => {
-            var query = "SELECT c.*, u.name, u.profilePicture, u.username, EXISTS(SELECT * FROM comment_likes WHERE user_id = ? AND comment_id = c.id) as liked, CASE WHEN EXISTS(SELECT user_id FROM comments WHERE user_id = ? AND id = c.id) THEN 1 ELSE 0 END as own FROM comments c JOIN users u ON u.id = c.user_id WHERE video_id = ? AND parentId = 0";
-            var params = [userId, userId, videoId, parseInt(from)];
+            var query = "SELECT c.*,\n" +
+                "       u.name,\n" +
+                "       u.profilePicture,\n" +
+                "       u.username,\n" +
+                "       EXISTS(SELECT * FROM comment_likes WHERE user_id = ? AND comment_id = c.id)                      as liked,\n" +
+                "       CASE WHEN EXISTS(SELECT user_id FROM comments WHERE user_id = ? AND id = c.id) THEN 1 ELSE 0 END as own,\n" +
+                "       (SELECT COUNT(*) FROM comment_likes WHERE comment_id = c.id)                                     AS total_likes\n" +
+                "FROM comments c\n" +
+                "         JOIN users u ON u.id = c.user_id\n" +
+                "WHERE video_id = ?\n" +
+                "  AND parentId = 0\n" +
+                "LIMIT ?, ?";
+            var params = [userId, userId, videoId, parseInt(from) * parseInt(limit),parseInt(limit)];
             query = mysql.format(query, params);
             this.pool.getConnection(function (err, connection) {
                 connection.query(query, async function (err, results, fields) {
@@ -1547,7 +1568,7 @@ class DbHandler {
                                     "video_id": e.video_id,
                                     "time": e.commentTime,
                                     "replies": e.replies,
-                                    "likes": e.likes,
+                                    "likes": e.total_likes,
                                     "user": {
                                         "id": e.user_id,
                                         "name": e.name,
