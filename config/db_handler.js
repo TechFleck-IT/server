@@ -1147,7 +1147,16 @@ class DbHandler {
 
     getProfile(userId, profileId) {
         return new Promise(resolve => {
-            var query = "SELECT u.*, EXISTS(SELECT * FROM followers WHERE follower = ? AND following = u.id) AS following, (? = u.id) AS viewer_own, (SELECT COUNT(*) FROM followers WHERE following = u.id) as followers, (SELECT COUNT(*) FROM products WHERE seller_id = u.id) as products, (SELECT COUNT(*) FROM followers WHERE follower = u.id) as followings, (SELECT COUNT(*) FROM videos WHERE user_id = u.id) as videos, k.public_exponent, k.public_modulus FROM users u LEFT JOIN user_keys k ON u.id = k.user_id WHERE u.id = ? AND NOT EXISTS( SELECT * FROM blocked_users WHERE blocked_by = ? AND blocked_id = u.id ) AND NOT EXISTS( SELECT * FROM blocked_users WHERE blocked_by = u.id AND blocked_id = ?)";
+            var query = "SELECT u.*,\n" +
+                "       EXISTS(SELECT * FROM followers WHERE follower = ? AND following = u.id) AS following,\n" +
+                "       (? = u.id)                                                              AS viewer_own,\n" +
+                "       (SELECT COUNT(*) FROM followers WHERE following = u.id)                 as followers,\n" +
+                "       (SELECT COUNT(*) FROM followers WHERE follower = u.id)                  as followings,\n" +
+                "       (SELECT COUNT(*) FROM videos WHERE user_id = u.id)                      as videos\n" +
+                "FROM users u\n" +
+                "WHERE u.id = ?\n" +
+                "  AND NOT EXISTS(SELECT * FROM blocked_users WHERE blocked_by = ? AND blocked_id = u.id)\n" +
+                "  AND NOT EXISTS(SELECT * FROM blocked_users WHERE blocked_by = u.id AND blocked_id = ?)";
             var params = [userId, userId, profileId, userId, userId];
             query = mysql.format(query, params);
             this.pool.getConnection(function (err, connection) {
@@ -1409,22 +1418,101 @@ class DbHandler {
         });
     }
 
-    getProfileVideos(userId, profileId, filter = "normal", from = 0) {
+    getProfileVideos(userId, profileId, videoType, from = 0) {
         return new Promise(resolve => {
-            if (filter == "premium") {
-                var query = "SELECT s.title as 'sound_title',  v.*, (? = v.user_id) as viewer_own, u.name, u.profilePicture, u.username, u.levelXP, EXISTS(SELECT * FROM likes WHERE video_id = v.id AND user_id = ?) as viewer_liked, CASE WHEN exclusiveAmount = 0 THEN 1 ELSE EXISTS(SELECT id FROM purchased_content WHERE user_id = ? AND video_id = v.id) END as isUnlocked, EXISTS(SELECT id FROM followers WHERE follower = ? AND following = u.id) as viewer_following FROM videos v JOIN users u ON u.id = v.user_id LEFT JOIN sounds s ON s.id = v.soundId WHERE v.user_id = ? AND v.isExclusive = 1 AND v.ad_id = 0 GROUP BY v.id ORDER BY v.id DESC LIMIT ?, 10";
-            } else if (filter == "liked") {
-                var query = "SELECT s.title as 'sound_title', v.*, (? = v.user_id) as viewer_own,  u.name, u.profilePictureBase64, u.username, u.levelXP, EXISTS(SELECT * FROM likes WHERE video_id = v.id AND user_id = ?) as viewer_liked, CASE WHEN exclusiveAmount = 0 THEN 1 ELSE EXISTS(SELECT id FROM purchased_content WHERE user_id = ? AND video_id = v.id) END as isUnlocked,EXISTS(SELECT id FROM followers WHERE follower = ? AND following = u.id) as viewer_following FROM likes l JOIN videos v ON v.id = l.video_id JOIN users u ON u.id = v.user_id LEFT JOIN sounds s ON s.id = v.soundId WHERE l.user_id = ? AND v.ad_id = 0 ORDER BY l.id DESC LIMIT ?, 10";
-            } else if (filter == "bookmarks") {
-                var query = "SELECT s.title as 'sound_title', v.*, (? = v.user_id) as viewer_own,  u.name, u.profilePictureBase64, u.username, u.levelXP, EXISTS(SELECT * FROM likes WHERE video_id = v.id AND user_id = ?) as viewer_liked, CASE WHEN exclusiveAmount = 0 THEN 1 ELSE EXISTS(SELECT id FROM purchased_content WHERE user_id = ? AND video_id = v.id) END as isUnlocked,EXISTS(SELECT id FROM followers WHERE follower = ? AND following = u.id) as viewer_following FROM likes l JOIN videos v ON v.id = l.video_id JOIN users u ON u.id = v.user_id LEFT JOIN sounds s ON s.id = v.soundId WHERE l.user_id = ? AND v.ad_id = 0 ORDER BY l.id DESC LIMIT ?, 10";
-            } else if (filter == "private") {
-                var query = "SELECT s.title as 'sound_title',  v.*, (? = v.user_id) as viewer_own, u.name, u.profilePicture, u.username, u.levelXP, CASE WHEN exclusiveAmount = 0 THEN 1 ELSE EXISTS(SELECT id FROM purchased_content WHERE user_id = ? AND video_id = v.id) END as isUnlocked,EXISTS(SELECT * FROM likes WHERE video_id = v.id AND user_id = ?) as viewer_liked, EXISTS(SELECT id FROM followers WHERE follower = ? AND following = u.id) as viewer_following FROM videos v JOIN users u ON u.id = v.user_id LEFT JOIN sounds s ON s.id = v.soundId WHERE v.user_id = ? AND v.isPrivate = 1 AND v.ad_id = 0 GROUP BY v.id ORDER BY v.id DESC LIMIT ?, 10";
-            } else {
+          if (videoType === 0) {
+              var params = [userId, userId, userId, profileId, parseInt(from) * 15];
+              // Normal query
+              var query = "SELECT s.title                                                                                     as 'sound_title',\n" +
+                  "       v.*,\n" +
+                  "       (? = v.user_id)                                                                             as viewer_own,\n" +
+                  "       u.name,\n" +
+                  "       u.profilePicture,\n" +
+                  "       u.username,\n" +
+                  "       u.levelXP,\n" +
+                  "       EXISTS(SELECT * FROM likes WHERE video_id = v.id AND user_id = ?)                           as viewer_liked,\n" +
+                  "       EXISTS(SELECT id FROM followers WHERE follower = ? AND following = u.id)                    as viewer_following\n" +
+                  "FROM videos v\n" +
+                  "         JOIN users u ON u.id = v.user_id\n" +
+                  "         LEFT JOIN sounds s ON s.id = v.soundId\n" +
+                  "WHERE v.user_id = ?\n" +
+                  "GROUP BY v.id\n" +
+                  "ORDER BY v.id DESC\n" +
+                  "LIMIT ?, 15";
+              // var query = "SELECT s.title as 'sound_title', (? = v.user_id) as viewer_own, v.*, u.name, u.profilePictureBase64, u.username, EXISTS(SELECT * FROM likes WHERE video_id = v.id AND user_id = ?) as viewer_liked, EXISTS(SELECT id FROM followers WHERE follower = ? AND following = u.id) as viewer_following, LOG10(ABS(v.likes + views) + v.videoTime / 300000) as score FROM videos v JOIN users u ON u.id = v.user_id JOIN sounds s ON s.id = v.soundId WHERE v.isPrivate = 0 GROUP BY v.id ORDER BY score DESC LIMIT ?, 15";
+          }else{
+            var query = "SELECT s.title                                                                                     as 'sound_title',\n" +
+                "       v.*,\n" +
+                "       (? = v.user_id)                                                                             as viewer_own,\n" +
+                "       u.name,\n" +
+                "       u.profilePicture,\n" +
+                "       u.username,\n" +
+                "       u.levelXP,\n" +
+                "       EXISTS(SELECT * FROM likes WHERE video_id = v.id AND user_id = ?)                           as viewer_liked,\n" +
+                "       EXISTS(SELECT id FROM followers WHERE follower = ? AND following = u.id)                    as viewer_following\n" +
+                "FROM videos v\n" +
+                "         JOIN users u ON u.id = v.user_id\n" +
+                "         LEFT JOIN sounds s ON s.id = v.soundId\n" +
+                "WHERE v.user_id = ?\n" +
+                "AND v.video_type_id = ?\n" +
+                "GROUP BY v.id\n" +
+                "ORDER BY v.id DESC\n" +
+                "LIMIT ?, 15"
+              var params = [userId, userId, userId, profileId, videoType ,parseInt(from) * 15];
+          }
+
+            query = mysql.format(query, params);
+            this.pool.getConnection(function (err, connection) {
+                connection.query(query, async function (err, results, fields) {
+                    connection.release();
+                    if (err) {
+                        console.error(err);
+                        console.error(results);
+                        resolve([]);
+                    } else {
+                        var videos = [];
+                        if (results.length > 0) {
+                            for (let i = 0; i < results.length; i++) {
+                                const e = results[i];
+                                // videos.push(this.parseVideoObject(e));
+                                const levels = null;
+                                const videoObj = this.parseVideoObject(e);
+                                videoObj.user.level = levels ? levels : null;
+                                videos.push(videoObj);
+                            }
+                        }
+                        resolve(videos);
+                    }
+                }.bind(this));
+            }.bind(this));
+        });
+    }
+
+    getUserSavedVideos(userId, profileId, from = 0) {
+        return new Promise(resolve => {
+
+                var params = [userId, userId, profileId, userId, userId, userId, userId, parseInt(from) * 15];
                 // Normal query
-                var query = "SELECT s.title as 'sound_title',  v.*, (? = v.user_id) as viewer_own, u.name, u.profilePicture, u.username, u.levelXP, EXISTS(SELECT * FROM likes WHERE video_id = v.id AND user_id = ?) as viewer_liked, CASE WHEN exclusiveAmount = 0 THEN 1 ELSE EXISTS(SELECT id FROM purchased_content WHERE user_id = ? AND video_id = v.id) END as isUnlocked,EXISTS(SELECT id FROM followers WHERE follower = ? AND following = u.id) as viewer_following FROM videos v JOIN users u ON u.id = v.user_id LEFT JOIN sounds s ON s.id = v.soundId WHERE v.user_id = ? AND v.ad_id = 0 AND v.isExclusive = 0 GROUP BY v.id ORDER BY v.id DESC  LIMIT ?, 10";
-                // var query = "SELECT s.title as 'sound_title', (? = v.user_id) as viewer_own, v.*, u.name, u.profilePictureBase64, u.username, EXISTS(SELECT * FROM likes WHERE video_id = v.id AND user_id = ?) as viewer_liked, EXISTS(SELECT id FROM followers WHERE follower = ? AND following = u.id) as viewer_following, LOG10(ABS(v.likes + views) + v.videoTime / 300000) as score FROM videos v JOIN users u ON u.id = v.user_id JOIN sounds s ON s.id = v.soundId WHERE v.isPrivate = 0 GROUP BY v.id ORDER BY score DESC LIMIT ?, 15";
-            }
-            var params = [userId, userId, userId, userId, profileId, parseInt(from)];
+                var query = "SELECT v.*,\n" +
+                    "       (? = v.user_id)                                                          as viewer_own,\n" +
+                    "       u.name,\n" +
+                    "       u.profilePicture,\n" +
+                    "       u.username,\n" +
+                    "       u.levelXP,\n" +
+                    "       EXISTS(SELECT * FROM followers fs WHERE u.id = fs.following AND fs.follower = ?) AS is_following,\n" +
+                    "       EXISTS(SELECT * FROM likes WHERE video_id = v.id AND user_id = ?)        as viewer_liked,\n" +
+                    "       EXISTS(SELECT id FROM followers WHERE follower = ? AND following = u.id) as viewer_following,\n" +
+                    "       EXISTS(SELECT id FROM followers WHERE follower = ? AND following = u.id)         AS viewer_following,\n" +
+                    "       EXISTS(SELECT * FROM bookmark WHERE user_id = ? AND video_id = v.id)             AS isBookMarked,\n" +
+                    "       (SELECT COUNT(*) FROM bookmark WHERE video_id = v.id)                            AS totalBookMarks,\n" +
+                    "       (SELECT count(*) FROM followers WHERE following = u.id)                          AS totalUserFollowers\n" +
+                    "FROM bookmark bm\n" +
+                    "         JOIN users u ON u.id = bm.user_id\n" +
+                    "         JOIN videos v ON v.id = bm.video_id\n" +
+                    "\n" +
+                    "WHERE bm.user_id = ?\n" +
+                    "LIMIT ?, 15;";
+
             query = mysql.format(query, params);
             this.pool.getConnection(function (err, connection) {
                 connection.query(query, async function (err, results, fields) {
@@ -1903,7 +1991,7 @@ class DbHandler {
             "name": obj["name"] ?? "",
             "username": obj["username"],
             "profilePicture": obj["profilePicture"] ?? "",
-            "about": obj["about"] ?? "",
+            "bio": obj["about"] ?? "",
             "country": obj["country"] ?? "",
             "twitter": obj["twitter"] ?? "",
             "instagram": obj["instagram"] ?? "",
@@ -1919,6 +2007,12 @@ class DbHandler {
             "isPrivateLikes": obj["isPrivateLikes"] == 1,
             "following": obj["following"] == 1,
             "coins": obj["coins"],
+            "accountType": obj["accountType"],
+            "websiteLike": obj["websiteLike"],
+            "address":obj["address"],
+            "cityId": obj["cityId"],
+            "phoneNumber": obj["phone"],
+            "email":obj["email"],
             "products": obj["products"],
             "own": obj["viewer_own"] == 1,
             "public_key": {
@@ -1983,6 +2077,7 @@ class DbHandler {
             "height": obj["height"],
             "width": obj["width"],
             "views": obj["views"],
+            "videoType":obj["video_type_id"],
             "isBookMarked": obj["isBookMarked"] !== 0,
             "totalBookMarks": obj["totalBookMarks"],
             // User node
@@ -2350,6 +2445,64 @@ class DbHandler {
                 });
             });
         });
+    }
+
+    updateProfilePic(userId, pictureUrl) {
+
+            const query = 'UPDATE users SET profilePicture = ? WHERE id = ?';
+            const params = [userId, pictureUrl];
+            const formattedQuery = mysql.format(query, params);
+        return new Promise(function (resolve, reject) {
+            this.pool.getConnection(async function (err, connection) {
+                var query = "UPDATE users SET profilePicture = ? WHERE id = ?";
+                var params = [pictureUrl, userId];
+                query = mysql.format(query, params);
+                connection.query(query, async function (err, results, fields) {
+                    connection.release();
+                    if (err) {
+                        console.error("Error: ", err);
+                        resolve(null);
+                    } else {
+                        if (results.affectedRows > 0) {
+                            resolve(true);
+                        } else {
+                            resolve(true);
+                        }
+                    }
+                });
+            });
+        }.bind
+        (this));
+
+    }
+
+    updateBio(userId, bio) {
+
+        const query = 'UPDATE users about bio = ? WHERE id = ?';
+        const params = [userId, bio];
+        const formattedQuery = mysql.format(query, params);
+        return new Promise(function (resolve, reject) {
+            this.pool.getConnection(async function (err, connection) {
+                var query = "UPDATE users SET about = ? WHERE id = ?";
+                var params = [bio, userId];
+                query = mysql.format(query, params);
+                connection.query(query, async function (err, results, fields) {
+                    connection.release();
+                    if (err) {
+                        console.error("Error: ", err);
+                        resolve(null);
+                    } else {
+                        if (results.affectedRows > 0) {
+                            resolve(true);
+                        } else {
+                            resolve(true);
+                        }
+                    }
+                });
+            });
+        }.bind
+        (this));
+
     }
 
     messageDelivered(conversationId, serverMessageId) {

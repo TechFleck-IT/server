@@ -42,6 +42,7 @@ var getIP = require('ipware')().get_ip;
    *                 user:
    *                   type: object
    */
+
 router.get('', async (req, res) => {
     const userId = req.query['userId'] ?? 0;
     const authUserId = req.user ? req.user.id : 0;
@@ -67,6 +68,22 @@ const videoStorage = multer.diskStorage({
 
 const sharp = require('sharp');
 const upload = multer({ storage: videoStorage })
+
+
+const profileStorage = multer.diskStorage({
+    destination: function (req, file, cb) {
+        cb(null, 'uploads/users')
+    },
+    filename: function (req, file, cb) {
+        const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9) + path.extname(file.originalname);
+        cb(null, uniqueSuffix)
+    }
+})
+
+const uploadUserPicture = multer({ storage: profileStorage} );
+
+
+
 /**
    * @swagger
    * /upload:
@@ -294,9 +311,21 @@ router.get('/videos', async (req, res) => {
     const authUserId = req.user ? req.user.id : 0;
     const from = req.query['from'] ?? 0;
     const userId = req.query['userId'] ?? 0;
-    const filter = req.query['filter'] ?? "normal"; // Normal, Premium, Bookmarks, Liked
-    console.log("filter", filter, userId, from)   
-    const videos = await db.getProfileVideos(authUserId, userId, filter, from);
+    const videoType = req.query['videoType'] ?? 0;
+    console.log( userId, from)
+    const videos = await db.getProfileVideos(authUserId, userId,videoType , from);
+    res.send({
+        "videos": videos,
+    });
+});
+
+
+router.get('/videos/saved', async (req, res) => {
+    const authUserId = req.user ? req.user.id : 0;
+    const from = req.query['from'] ?? 0;
+    const userId =  req.user ? req.user.id : 0;
+    console.log( userId, from)
+    const videos = await db.getUserSavedVideos(authUserId, userId, from);
     res.send({
         "videos": videos,
     });
@@ -568,6 +597,34 @@ const storage = multer.diskStorage({
     }
 })
 const imageUpload = multer({ storage: storage });
+
+
+router.post('/update-profile-pic', uploadUserPicture.single("picture"), async (req, res) => {
+    if (req.user == null)
+        throw new AppError("unauthorized",401);
+
+    let pictureUrl = "";
+    if (req.file) {
+        pictureUrl =  "users/" + req.file.filename;
+    }
+
+    await db.updateProfilePic(req.user.id, pictureUrl)
+
+    res.send({pictureUrl})
+
+});
+
+router.post('/bio', async (req, res) => {
+    if (req.user == null)
+        throw new AppError("unauthorized",401);
+
+    let bio = req.body['bio'] ?? null;
+    await db.updateBio(req.user.id, bio)
+
+    res.send({})
+
+});
+
 
 /**
    * @swagger
@@ -999,6 +1056,7 @@ const { exec } = require('child_process');
 const upload_manager = require('../config/upload_manager');
 const { type } = require('os');
 const { threadId } = require('worker_threads');
+const AppError = require("../utils/appError");
 
 async function generateGif(input, filename) {
     const outputPath = `gifs/${filename}`;
