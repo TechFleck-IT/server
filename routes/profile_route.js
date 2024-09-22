@@ -659,43 +659,13 @@ router.post('/bio', async (req, res) => {
    *       401:
    *         description: Unauthorized
    */
-router.post('/update', imageUpload.single('profilePic'), async (req, res) => {
+router.post('/update', async (req, res) => {
     if (!req.user) {
         res.status(401).send({
             error: "unauthorized"
         });
         return;
     }
-    const userDetails = await db.getUserById(req.user.id);
-    let profilePictureUrl;
-
-    if (req.files) {
-        if (req.files['picture']) {
-            const profilePictureUpload = await upload_manager.upload({
-                key: 'images',
-                fileReference: req.files['picture'][0].path,
-                contentType: mime.lookup(req.files['picture'][0].path),
-                fileName: req.files['picture'][0].filename
-            });
-            profilePictureUrl = profilePictureUpload.Location;
-            req.body['profilePicture'] = profilePictureUrl;
-        }
-    }
-    if (req.body.username) {
-        const checkUsername = await db.getUserByUsername(req.body.username);
-        if (checkUsername) {
-            res.status(400).send({
-                "error": "username"
-            });
-            return;
-        }
-        if (/[ .-]/.test(req.body.username)) {
-            res.status(400).send({
-                "error": "username"
-            });
-            return;
-        }
-    }    
 
     const updateRes = await db.updateProfile(req.user.id, req.body);
     if (updateRes) {
@@ -705,6 +675,18 @@ router.post('/update', imageUpload.single('profilePic'), async (req, res) => {
             "error": "username"
         });
     }
+});
+
+router.post('/change-password', async (req, res) => {
+    if (!req.user) {
+        res.status(401).send({
+            error: "unauthorized"
+        });
+        return;
+    }
+     await db.changePassword(req.user.id, req.body);
+
+    return res.status(200).send()
 });
 
 /**

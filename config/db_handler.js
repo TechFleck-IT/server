@@ -623,6 +623,7 @@ class DbHandler {
                         user['instagram'] = user['instagram'] ?? "";
                         user['facebook'] = user['facebook'] ?? "";
                         user['twitter'] = user['twitter'] ?? "";
+                        user["password"] = user['password'] ?? "";
                         user['profilePicture'] = user['profilePicture'] ?? "";
                         user['about'] = user['about'] ?? "";
                         user['isVerified'] = user['isVerified'] == 1;
@@ -635,6 +636,20 @@ class DbHandler {
                 });
             });
         }.bind(this));
+    }
+
+    async changePassword(id, value) {
+
+       let user = await this.getUserById(id);
+
+       if (user.password !== value.currentPassword) {
+           throw new AppError("current password is incorrect", 401)
+       }
+       if (user.password === value.newPassword){
+           throw new AppError("new password is the same is the current password", 400)
+       }
+
+       await this.updateProfile(id, {password:value.newPassword})
     }
 
     getUserByAuth(auth) {
@@ -2014,6 +2029,7 @@ class DbHandler {
             "phoneNumber": obj["phone"],
             "email":obj["email"],
             "products": obj["products"],
+            "websiteLink": obj["websiteLink"] ?? "",
             "own": obj["viewer_own"] == 1,
             "public_key": {
                 "public_exponent": obj["public_exponent"],
@@ -2413,11 +2429,6 @@ class DbHandler {
 
     updateProfile(userId, values) {
         return new Promise(async (resolve, reject) => {
-            const existingUser = await this.checkUsername(values);
-            if (existingUser) {
-                resolve(null);
-                return;
-            }
 
             const query = 'UPDATE users SET ? WHERE id = ?';
             const params = [values, userId];
