@@ -67,7 +67,7 @@ class DbHandler {
             this.pool.getConnection(function (err, connection) {
               connection.query(query, function (err, results, fields) {
                 connection.release();
-                
+
                 if (err) {
                   console.log("[Error]", err);
                   resolve(null);
@@ -714,6 +714,128 @@ class DbHandler {
             });
         }.bind(this));
     }
+
+    searchInUser(searchKey, from , threshold) {
+        searchKey = `%${searchKey}%`
+        return new Promise(function (resolve, reject) {
+            var query = "SELECT * ,\n" +
+                "       (SELECT count(*) FROM followers WHERE following = u.id)                          AS totalUserFollowers\n" +
+                "FROM users u\n" +
+                "WHERE name LIKE ? \n" +
+                "   OR address LIKE ? \n" +
+                "   OR websiteLink LIKE ? \n" +
+                "   OR MATCH(name, address, websiteLink) AGAINST( ? IN NATURAL LANGUAGE MODE)\n" +
+                "ORDER BY\n" +
+                "    totalUserFollowers desc ,\n" +
+                "    CASE\n" +
+                "        WHEN name LIKE ? THEN 1\n" +
+                "        WHEN address LIKE ? THEN 2\n" +
+                "        WHEN websiteLink LIKE ? THEN 3\n" +
+                "        WHEN MATCH(name) AGAINST(?) THEN 4\n" +
+                "        WHEN MATCH(address) AGAINST(?) THEN 5\n" +
+                "        WHEN MATCH(websiteLink) AGAINST(?) THEN 6\n" +
+                "        ELSE 7 \n" +
+                "        END \n" +
+                "limit ?, ?";
+            var params = [searchKey,searchKey,searchKey,searchKey,searchKey,searchKey,searchKey,searchKey,searchKey,searchKey, parseInt(from) * parseInt(threshold), parseInt(threshold)];
+            query = mysql.format(query, params);
+            this.pool.getConnection(function (err, connection) {
+                connection.query(query, function (err, results, fields) {
+                    connection.release();
+                    if (err) {
+                        console.error("[Error]", err);
+                        resolve(null);
+                        return;
+                    }
+                    resolve(results);
+                });
+            });
+        }.bind(this));
+    }
+    searchInUserWithType(searchKey, type,from , threshold) {
+        searchKey = `%${searchKey}%`
+        return new Promise(function (resolve, reject) {
+            var query = "SELECT * , \n" +
+                "                       (SELECT count(*) FROM followers WHERE following = u.id)                          AS totalUserFollowers \n" +
+                "                FROM users u \n" +
+                "                WHERE accountType = ? AND( name LIKE ?\n" +
+                "                   OR address LIKE ?\n" +
+                "                   OR websiteLink LIKE ?  \n" +
+                "                   OR MATCH(name, address, websiteLink) AGAINST( ? IN NATURAL LANGUAGE MODE) )\n" +
+                "                ORDER BY \n" +
+                "                    totalUserFollowers desc , \n" +
+                "                    CASE \n" +
+                "                        WHEN name LIKE ? THEN 1 \n" +
+                "                        WHEN address LIKE ? THEN 2 \n" +
+                "                        WHEN websiteLink LIKE ? THEN 3 \n" +
+                "                        WHEN MATCH(name) AGAINST(?) THEN 4 \n" +
+                "                        WHEN MATCH(address) AGAINST(?) THEN 5 \n" +
+                "                        WHEN MATCH(websiteLink) AGAINST(?) THEN 6 \n" +
+                "                        ELSE 7  \n" +
+                "                        END \n" +
+                "                limit ?, ?";
+            var params = [type,searchKey,searchKey,searchKey,searchKey,searchKey,searchKey,searchKey,searchKey,searchKey,searchKey, parseInt(from) * parseInt(threshold), parseInt(threshold)];
+            query = mysql.format(query, params);
+            this.pool.getConnection(function (err, connection) {
+                connection.query(query, function (err, results, fields) {
+                    connection.release();
+                    if (err) {
+                        console.error("[Error]", err);
+                        resolve(null);
+                        return;
+                    }
+                    resolve(results);
+                });
+            });
+        }.bind(this));
+    }
+    searchInVideo(searchKey, from ,threshold ) {
+
+        return new Promise(resolve => {
+            searchKey = `%${searchKey}%`
+            var query = "SELECT *\n" +
+                "FROM videos v\n" +
+                "         JOIN users u ON u.id = v.user_id\n" +
+                "WHERE title LIKE ?\n" +
+                "   OR description LIKE ?\n" +
+                "   OR MATCH(title, description) AGAINST(? IN NATURAL LANGUAGE MODE)\n" +
+                "ORDER BY\n" +
+                "    likes desc ,\n" +
+                "    CASE\n" +
+                "        WHEN title LIKE ? THEN 1\n" +
+                "        WHEN description LIKE ? THEN 2\n" +
+                "        WHEN MATCH(title) AGAINST(?) THEN 3\n" +
+                "        WHEN MATCH(description) AGAINST(?) THEN 4\n" +
+                "        ELSE 5\n" +
+                "        END \n"+
+                "limit ?, ?";
+            var params = [searchKey,searchKey,searchKey,searchKey,searchKey,searchKey,searchKey,parseInt(from) * parseInt(threshold), parseInt(threshold)];
+            query = mysql.format(query, params);
+            this.pool.getConnection(function (err, connection) {
+                connection.query(query, async function (err, results, fields) {
+                    connection.release();
+                    if (err) {
+                        console.error(err);
+                        console.error(results);
+                        resolve([]);
+                    } else {
+                        var videos = [];
+                        if (results.length > 0) {
+                            for (let i = 0; i < results.length; i++) {
+                                const e = results[i];
+                                const levels = null;
+                                const videoObj = this.parseVideoObject(e);
+                                videoObj.user.level = levels ? levels : null;
+                                videos.push(videoObj);
+                            }
+                        }
+                        resolve(videos);
+                    }
+                }.bind(this));
+            }.bind(this));
+        });
+    }
+
     getUserByEmail(uid) {
         return new Promise(function (resolve, reject) {
             var query = "SELECT * FROM users WHERE email = ?";
@@ -1120,7 +1242,7 @@ class DbHandler {
     searchUsers(userId, searchQuery, from = 0, threshold = 10) {
         return new Promise(resolve => {
             const self = this; // Capture the reference to 'this'
-    
+
             if (searchQuery != "") {
                 var query = "SELECT u.*, EXISTS(SELECT id FROM followers WHERE follower = ? AND following = u.id) AS viewer_follower, (IF(u.id = ?, 1, 0)) AS viewer_own FROM users u LEFT JOIN blocked_users bu ON u.id = bu.blocked_id AND bu.blocked_by = ? WHERE u.name LIKE CONCAT('%', ?, '%') AND bu.blocked_id IS NULL";
                 var params = [userId, userId, userId, searchQuery];
@@ -1129,7 +1251,7 @@ class DbHandler {
                 var params = [userId, userId, userId, parseInt(from), parseInt(threshold)];
             }
             query = mysql.format(query, params);
-    
+
             this.pool.getConnection(function (err, connection) {
                 connection.query(query, async function (err, results, fields) {
                     connection.release();
@@ -1748,7 +1870,7 @@ class DbHandler {
                     "SELECT * FROM user_fcm_tokens WHERE user_id = ? AND fcm_token = ?",
                     [userId, token]
                 );
-    
+
                 if (existingTokenRows.length > 0) {
                     // Token already exists, no need to insert
                     resolve(true);

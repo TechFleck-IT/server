@@ -417,4 +417,44 @@ router.get('/tag', async (req, res) => {
     res.send(results);
 });
 
+router.get("/search", async (req, res) => {
+    if (!req.user) {
+        res.status(401).send({
+            error: "unauthorized"
+        });
+        return;
+    }
+    const searchValue = req.query['value'] ?? "";
+    const from = req.query['from'] ?? 0;
+    const limit = req.query['limit'] ?? 10;
+    const searchKey = req.query['key'] ?? "TOP";
+
+
+    if (searchKey === "TOP"){
+        const users = await db.searchInUser(searchValue, from, limit);
+        const videos = await db.searchInVideo(searchValue, from, limit)
+       return res.send({users, videos})
+    }
+    if (searchKey === "VIDEO"){
+        const videos = await db.searchInVideo(searchValue, from, limit)
+        return res.send({videos})
+    }
+    if (searchKey === "USER"){
+        const users = await db.searchInUser(searchValue, from, limit);
+        return  res.send({users})
+    }
+    if (searchKey === "RESTAURANT"){
+        const users = await db.searchInUserWithType(searchValue,"BUSINESS", from, limit);
+        return  res.send({users})
+    }
+    if (searchKey === "CHEF"){
+        const users = await db.searchInUserWithType(searchValue,"CHEF", from, limit);
+        return res.send({users})
+    }
+
+    return res.send({})
+
+})
+
+
 module.exports = router
