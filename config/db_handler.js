@@ -437,6 +437,43 @@ class DbHandler {
         });
     }
 
+    rateVideo(userId, videoId, rate) {
+        return new Promise(async resolve => {
+            const promisePool = this.pool.promise();
+            // const connection = await promisePool.getConnection();
+            const [rows, fields] = await promisePool.query("INSERT IGNORE INTO rating (userId, videoId, rating) VALUES (?, ? , ?)", [userId, videoId, rate]);
+            // connection.release();
+            resolve(rows.affectedRows > 0);
+        });
+    }
+
+    getVideoRateVideo(userId, videoId, rate ) {
+        return new Promise(async resolve => {
+            const promisePool = this.pool.promise();
+            // const connection = await promisePool.getConnection();
+            const [rows, fields] = await promisePool.query("SELECT * FROM rating WHERE userId = ? AND videoId = ?", [userId, videoId]);
+            // connection.release();
+            resolve(rows.length > 0);
+        });
+    }
+
+    updateRateVideo(userId, videoId, rate ) {
+        return new Promise(async resolve => {
+            const promisePool = this.pool.promise();
+            // const connection = await promisePool.getConnection();
+            const [rows, fields] = await promisePool.query("UPDATE rating SET rating = ? WHERE userId = ? AND videoId = ?", [rate,userId, videoId]);
+            // connection.release();
+            resolve(rows.affectedRows > 0);
+        });
+    }
+
+    async updateVideoRating(userId, videoId, rate) {
+        if (await this.getVideoRateVideo(userId, videoId, rate)) {
+           return await this.updateRateVideo(userId, videoId, rate);
+        }else
+            return await this.rateVideo(userId, videoId, rate);
+    }
+
     toggleVideoBookmark(userId, videoId, value) {
         return new Promise(function (resolve, reject) {
             if (value) {

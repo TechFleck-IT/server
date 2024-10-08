@@ -531,5 +531,22 @@ router.post('/bookmark', async (req, res) => {
     });
 });
 
+router.post('/rate', async (req, res) => {
+    if (!req.user) {
+        res.status(401).send({
+            error: "unauthorized"
+        });
+        return
+    }
+
+    let videoId = req.body['video_id'] ?? 0;
+    let rate = req.body['rate'] ?? 0;
+
+    let response = await db.updateVideoRating(req.user.id, videoId, rate);
+
+     res.send({response})
+
+})
+
 
 module.exports = router
