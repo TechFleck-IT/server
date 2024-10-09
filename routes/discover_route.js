@@ -430,6 +430,8 @@ router.get("/search", async (req, res) => {
     const searchKey = req.query['key'] ?? "TOP";
 
 
+    await db.addToSearchHistory(req.user.id, searchValue)
+
     if (searchKey === "TOP"){
         const users = await db.searchInUser(searchValue, from, limit);
         const videos = await db.searchInVideo(searchValue, from, limit)
@@ -453,6 +455,19 @@ router.get("/search", async (req, res) => {
     }
 
     return res.send({})
+
+})
+
+router.get("/search-history", async (req, res) => {
+    if (!req.user) {
+        res.status(401).send({
+            error: "unauthorized"
+        });
+        return;
+    }
+
+   let history = await db.getSearchHistory(req.user.id);
+    return res.send({history})
 
 })
 

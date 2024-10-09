@@ -404,6 +404,26 @@ class DbHandler {
         }.bind(this));
     }
 
+    addToSearchHistory(userId, searchKey) {
+        return new Promise(function (resolve, reject) {
+
+            let query = "INSERT IGNORE INTO search_history (userId, searchKey) VALUES (?, ?)";
+            const params = [userId, searchKey];
+            query = mysql.format(query, params);
+            this.pool.getConnection(function (err, connection) {
+                connection.query(query, async function (err, results, fields) {
+                    if (err) {
+                        console.log(err);
+                        resolve(false);
+                    } else {
+                        resolve(true)
+                    }
+                    connection.release();
+                });
+            });
+        }.bind(this));
+    }
+
     markVideoViewed(userId, videoId, own) {
         return new Promise(async (resolve) => {
             const promisePool = this.pool.promise();
@@ -1798,7 +1818,7 @@ class DbHandler {
         });
     }
 
-    getComments(userId, videoId, from = 0, limit = 15) {
+    getComments(userId, from = 0, limit = 10) {
         return new Promise(resolve => {
             var query = "SELECT c.*,\n" +
                 "       u.name,\n" +
@@ -1845,6 +1865,26 @@ class DbHandler {
                             }
                         }
                         resolve(comments);
+                    }
+                }.bind(this));
+            }.bind(this));
+        });
+    }
+
+    getSearchHistory(userId,  from = 0, limit = 10) {
+        return new Promise(resolve => {
+            var query = "Select * FROM search_history WHERE userId = ? ORDER BY created_at DESC limit ?, ? ";
+            var params = [userId, parseInt(from) * parseInt(limit),parseInt(limit)];
+            query = mysql.format(query, params);
+            this.pool.getConnection(function (err, connection) {
+                connection.query(query, async function (err, results, fields) {
+                    connection.release();
+                    if (err) {
+                        console.error(err);
+                        console.error(results);
+                        resolve([]);
+                    } else {
+                        resolve(results);
                     }
                 }.bind(this));
             }.bind(this));
