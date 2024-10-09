@@ -830,7 +830,7 @@ class DbHandler {
 
         return new Promise(resolve => {
             searchKey = `%${searchKey}%`
-            var query = "SELECT *\n" +
+            var query = "SELECT v.*, u.name, u.profilePicture, u.username, u.levelXP , u.accountType \n" +
                 "FROM videos v\n" +
                 "         JOIN users u ON u.id = v.user_id\n" +
                 "WHERE title LIKE ?\n" +
@@ -1446,29 +1446,33 @@ class DbHandler {
     getDiscoverVideos(userId, searchQuery, from = 0, threshold = 15) {
         return new Promise(resolve => {
             if (searchQuery == "") {
-                var query = "SELECT s.title                                                                          AS 'sound_title',\n" +
-                    "       albumPhotoUrl,\n" +
-                    "       (? = v.user_id)                                                                  AS viewer_own,\n" +
-                    "       v.*,\n" +
-                    "       u.name,\n" +
-                    "       u.profilePicture,\n" +
-                    "       u.username,\n" +
-                    "       u.levelXP,\n" +
-                    "       EXISTS(SELECT * FROM followers fs WHERE u.id = fs.following AND fs.follower = ?) AS is_following,\n" +
-                    "       EXISTS(SELECT * FROM likes WHERE video_id = v.id AND user_id = ?)                AS viewer_liked,\n" +
-                    "       EXISTS(SELECT id FROM followers WHERE follower = ? AND following = u.id)         AS viewer_following,\n" +
-                    "       EXISTS(SELECT * FROM bookmark WHERE user_id = ? AND video_id = v.id)             AS isBookMarked,\n" +
-                    "       (SELECT COUNT(*) FROM bookmark WHERE video_id = v.id)                            AS totalBookMarks,\n" +
-                    "       (SELECT count(*) FROM followers WHERE following = u.id)                          AS totalUserFollowers,\n" +
-                    "       (v.comments + v.likes + v.views) * (NOW() - v.videoTime) * RAND()                AS priority\n" +
-                    "FROM videos v\n" +
-                    "         JOIN users u ON u.id = v.user_id\n" +
-                    "         LEFT JOIN sounds s ON s.id = v.soundId\n" +
-                    "         LEFT JOIN ad_viewed av ON av.video_id = v.id AND av.user_id = ?\n" +
-                    "WHERE v.isPrivate = 0\n" +
-                    "ORDER BY priority DESC\n" +
-                    "LIMIT ?, ?";
-                var params = [userId, userId, userId,userId, userId, userId, parseInt(from) * parseInt(threshold), parseInt(threshold)];
+                var query = "SELECT s.title                                                                          AS 'sound_title', \n" +
+                    "                           albumPhotoUrl, \n" +
+                    "                           (? = v.user_id)                                                                  AS viewer_own, \n" +
+                    "                           v.*, \n" +
+                    "                           u.name, \n" +
+                    "                           u.profilePicture, \n" +
+                    "                           u.username, \n" +
+                    "                           u.levelXP,\n" +
+                    "                           (select SUM(rating) FROM rating r where v.id = r.videoId) as rating_total,\n" +
+                    "                           (select COUNT(rating) FROM rating r where  v.id = r.videoId ) as rating_count,\n" +
+                    "                           EXISTS(select * FROM rating r where r.userId = ? and  v.id = r.videoId )  as is_user_rated,\n" +
+                    "                           (select rating from rating r where r.userId = ? and v.id = r.videoId) as user_rating,\n" +
+                    "                           EXISTS(SELECT * FROM followers fs WHERE u.id = fs.following AND fs.follower = ?) AS is_following,\n" +
+                    "                           EXISTS(SELECT * FROM likes WHERE video_id = v.id AND user_id = ?)                AS viewer_liked, \n" +
+                    "                           EXISTS(SELECT id FROM followers WHERE follower = ? AND following = u.id)         AS viewer_following, \n" +
+                    "                           EXISTS(SELECT * FROM bookmark WHERE user_id = ? AND video_id = v.id)             AS isBookMarked, \n" +
+                    "                           (SELECT COUNT(*) FROM bookmark WHERE video_id = v.id)                            AS totalBookMarks, \n" +
+                    "                           (SELECT count(*) FROM followers WHERE following = u.id)                          AS totalUserFollowers, \n" +
+                    "                           (v.comments + v.likes + v.views) * (NOW() - v.videoTime) * RAND()                AS priority\n" +
+                    "                    FROM videos v \n" +
+                    "                             JOIN users u ON u.id = v.user_id \n" +
+                    "                             LEFT JOIN sounds s ON s.id = v.soundId \n" +
+                    "                             LEFT JOIN ad_viewed av ON av.video_id = v.id AND av.user_id = ? \n" +
+                    "                    WHERE v.isPrivate = 0 \n" +
+                    "                    ORDER BY priority DESC \n" +
+                    "                    LIMIT ?, ?";
+                var params = [userId, userId, userId, userId, userId,userId, userId, userId, parseInt(from) * parseInt(threshold), parseInt(threshold)];
             } else {
                 var query = "SELECT s.title as 'sound_title', albumPhotoUrl, (? = v.user_id) as viewer_own, v.*, u.name, u.profilePicture, u.username, u.levelXP, EXISTS(SELECT * FROM likes WHERE video_id = v.id AND user_id = ?) as viewer_liked, CASE WHEN exclusiveAmount = 0 THEN 1 ELSE EXISTS(SELECT id FROM purchased_content WHERE user_id = ? AND video_id = v.id) END as isUnlocked, EXISTS(SELECT id FROM followers WHERE follower = ? AND following = u.id) as viewer_following, LOG10(ABS(v.likes + views) + v.videoTime / 300000) as score FROM videos v JOIN users u ON u.id = v.user_id LEFT JOIN sounds s ON s.id = v.soundId WHERE v.title LIKE CONCAT('%', ?, '%') ORDER BY id DESC LIMIT ?, ?";
                 var params = [userId, userId, userId, userId, searchQuery, parseInt(from), parseInt(threshold)];
@@ -2229,7 +2233,12 @@ class DbHandler {
     }
 
     parseVideoObject(obj) {
-        var i = {
+        let rating
+        if (obj["rating_total"] !== null){
+            rating = obj["rating_total"] / obj["rating_count"];
+            rating = rating.toPrecision(2)
+        }
+        const i = {
             "id": obj["id"] ?? 0,
             "title": obj["title"] ?? "",
             "tags": obj["tags"] ?? "",
@@ -2252,7 +2261,10 @@ class DbHandler {
             "height": obj["height"],
             "width": obj["width"],
             "views": obj["views"],
-            "videoType":obj["video_type_id"],
+            "rating":  rating ?? "",
+            "isUserRated": obj["is_user_rated"] === 1,
+            "userRating": obj["user_rating"],
+            "videoType": obj["video_type_id"],
             "isBookMarked": obj["isBookMarked"] !== 0,
             "totalBookMarks": obj["totalBookMarks"],
             // User node
@@ -2261,6 +2273,7 @@ class DbHandler {
                 "id": obj["user_id"] ?? 0,
                 "name": obj["name"] ?? "",
                 "username": obj["username"] ?? "",
+                "accountType": obj["accountType"] ?? "",
                 "picture": obj["profilePicture"] ?? "",
                 "levelBadge": obj["levelBadge"] ?? "",
                 "levelName": obj["levelName"] ?? "",
