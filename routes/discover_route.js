@@ -433,24 +433,24 @@ router.get("/search", async (req, res) => {
     await db.addToSearchHistory(req.user.id, searchValue)
 
     if (searchKey === "TOP"){
-        const users = await db.searchInUser(searchValue, from, limit);
-        const videos = await db.searchInVideo(searchValue, from, limit)
+        const users = await db.searchInUser(req.user.id, searchValue, from, limit);
+        const videos = await db.searchInVideo(req.user.id, searchValue, from, limit)
        return res.send({users, videos})
     }
     if (searchKey === "VIDEO"){
-        const videos = await db.searchInVideo(searchValue, from, limit)
+        const videos = await db.searchInVideo(req.user.id, searchValue, from, limit)
         return res.send({videos})
     }
     if (searchKey === "USER"){
-        const users = await db.searchInUser(searchValue, from, limit);
+        const users = await db.searchInUser(req.user.id,searchValue, from, limit);
         return  res.send({users})
     }
     if (searchKey === "RESTAURANT"){
-        const users = await db.searchInUserWithType(searchValue,"BUSINESS", from, limit);
+        const users = await db.searchInUserWithType(req.user.id, searchValue,"BUSINESS", from, limit);
         return  res.send({users})
     }
     if (searchKey === "CHEF"){
-        const users = await db.searchInUserWithType(searchValue,"CHEF", from, limit);
+        const users = await db.searchInUserWithType(req.user.id, searchValue,"CHEF", from, limit);
         return res.send({users})
     }
 
@@ -468,6 +468,19 @@ router.get("/search-history", async (req, res) => {
 
    let history = await db.getSearchHistory(req.user.id);
     return res.send({history})
+
+})
+
+router.delete("/search-history", async (req, res) => {
+    if (!req.user) {
+        res.status(401).send({
+            error: "unauthorized"
+        });
+        return;
+    }
+
+    await db.deleteSearchHistory(req.query['id'] ?? 0);
+    return res.send({})
 
 })
 

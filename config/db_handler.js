@@ -248,8 +248,27 @@ class DbHandler {
         return new Promise(async resolve => {
             const promisePool = this.pool.promise();
             // const connection = await promisePool.getConnection();
-            var params = [authUserId, authUserId, authUserId, videoId];
-            const [rows, fields] = await promisePool.query("SELECT s.title as 'sound_title',(? = v.user_id) as viewer_own, v.*, u.name, u.profilePicture, u.username, EXISTS(SELECT * FROM likes WHERE video_id = v.id AND user_id = ?) as viewer_liked, EXISTS(SELECT id FROM followers WHERE follower = ? AND following = u.id) as viewer_following FROM videos v JOIN users u ON u.id = v.user_id LEFT JOIN sounds s ON s.id = v.soundId WHERE v.id = ?", params);
+            var params = [authUserId, authUserId, authUserId, authUserId, authUserId, authUserId,authUserId,videoId];
+            const [rows, fields] = await promisePool.query("SELECT s.title                                                                          as 'sound_title',\n" +
+                "       (? = v.user_id)                                                                  as viewer_own,\n" +
+                "       v.*,\n" +
+                "       u.name,\n" +
+                "       u.profilePicture,\n" +
+                "       u.username,\n" +
+                "       EXISTS(SELECT * FROM likes WHERE video_id = v.id AND user_id = ?)                as viewer_liked,\n" +
+                "       EXISTS(SELECT id FROM followers WHERE follower = ? AND following = u.id)         as viewer_following,\n" +
+                "       (select SUM(rating) FROM rating r where v.id = r.videoId)                        as rating_total,\n" +
+                "       (select COUNT(rating) FROM rating r where v.id = r.videoId)                      as rating_count,\n" +
+                "       EXISTS(select * FROM rating r where r.userId = ? and v.id = r.videoId)           as is_user_rated,\n" +
+                "       (select rating from rating r where r.userId = ? and v.id = r.videoId)            as user_rating,\n" +
+                "       EXISTS(SELECT * FROM followers fs WHERE u.id = fs.following AND fs.follower = ?) AS is_following,\n" +
+                "       EXISTS(SELECT * FROM bookmark WHERE user_id = ? AND video_id = v.id)             AS isBookMarked,\n" +
+                "       (SELECT COUNT(*) FROM bookmark WHERE video_id = v.id)                            AS totalBookMarks,\n" +
+                "       (SELECT count(*) FROM followers WHERE following = u.id)                          AS totalUserFollowers\n" +
+                "FROM videos v\n" +
+                "         JOIN users u ON u.id = v.user_id\n" +
+                "         LEFT JOIN sounds s ON s.id = v.soundId\n" +
+                "WHERE v.id = ?", params);
             if (rows.length > 0) {
                 resolve(this.parseVideoObject(rows[0]));
             } else {
@@ -772,66 +791,30 @@ class DbHandler {
         }.bind(this));
     }
 
-    searchInUser(searchKey, from , threshold) {
+    searchInUser(userId,searchKey, from , threshold) {
         searchKey = `%${searchKey}%`
         return new Promise(function (resolve, reject) {
             var query = "SELECT * ,\n" +
-                "       (SELECT count(*) FROM followers WHERE following = u.id)                          AS totalUserFollowers\n" +
-                "FROM users u\n" +
-                "WHERE name LIKE ? \n" +
-                "   OR address LIKE ? \n" +
-                "   OR websiteLink LIKE ? \n" +
-                "   OR MATCH(name, address, websiteLink) AGAINST( ? IN NATURAL LANGUAGE MODE)\n" +
-                "ORDER BY\n" +
-                "    totalUserFollowers desc ,\n" +
-                "    CASE\n" +
-                "        WHEN name LIKE ? THEN 1\n" +
-                "        WHEN address LIKE ? THEN 2\n" +
-                "        WHEN websiteLink LIKE ? THEN 3\n" +
-                "        WHEN MATCH(name) AGAINST(?) THEN 4\n" +
-                "        WHEN MATCH(address) AGAINST(?) THEN 5\n" +
-                "        WHEN MATCH(websiteLink) AGAINST(?) THEN 6\n" +
-                "        ELSE 7 \n" +
-                "        END \n" +
-                "limit ?, ?";
-            var params = [searchKey,searchKey,searchKey,searchKey,searchKey,searchKey,searchKey,searchKey,searchKey,searchKey, parseInt(from) * parseInt(threshold), parseInt(threshold)];
-            query = mysql.format(query, params);
-            this.pool.getConnection(function (err, connection) {
-                connection.query(query, function (err, results, fields) {
-                    connection.release();
-                    if (err) {
-                        console.error("[Error]", err);
-                        resolve(null);
-                        return;
-                    }
-                    resolve(results);
-                });
-            });
-        }.bind(this));
-    }
-    searchInUserWithType(searchKey, type,from , threshold) {
-        searchKey = `%${searchKey}%`
-        return new Promise(function (resolve, reject) {
-            var query = "SELECT * , \n" +
-                "                       (SELECT count(*) FROM followers WHERE following = u.id)                          AS totalUserFollowers \n" +
-                "                FROM users u \n" +
-                "                WHERE accountType = ? AND( name LIKE ?\n" +
-                "                   OR address LIKE ?\n" +
-                "                   OR websiteLink LIKE ?  \n" +
-                "                   OR MATCH(name, address, websiteLink) AGAINST( ? IN NATURAL LANGUAGE MODE) )\n" +
-                "                ORDER BY \n" +
-                "                    totalUserFollowers desc , \n" +
-                "                    CASE \n" +
-                "                        WHEN name LIKE ? THEN 1 \n" +
-                "                        WHEN address LIKE ? THEN 2 \n" +
-                "                        WHEN websiteLink LIKE ? THEN 3 \n" +
-                "                        WHEN MATCH(name) AGAINST(?) THEN 4 \n" +
-                "                        WHEN MATCH(address) AGAINST(?) THEN 5 \n" +
-                "                        WHEN MATCH(websiteLink) AGAINST(?) THEN 6 \n" +
-                "                        ELSE 7  \n" +
+                "       (SELECT count(*) FROM followers WHERE following = u.id)                          AS totalUserFollowers,\n" +
+                "       EXISTS(SELECT * FROM followers fs WHERE u.id = fs.following AND fs.follower = ?) AS is_following\n" +
+                "                FROM users u\n" +
+                "                WHERE name LIKE ? \n" +
+                "                   OR address LIKE ? \n" +
+                "                   OR websiteLink LIKE ? \n" +
+                "                   OR MATCH(name, address, websiteLink) AGAINST( ? IN NATURAL LANGUAGE MODE)\n" +
+                "                ORDER BY\n" +
+                "                    totalUserFollowers desc ,\n" +
+                "                    CASE\n" +
+                "                        WHEN name LIKE ? THEN 1\n" +
+                "                        WHEN address LIKE ? THEN 2\n" +
+                "                        WHEN websiteLink LIKE ? THEN 3\n" +
+                "                        WHEN MATCH(name) AGAINST(?) THEN 4\n" +
+                "                        WHEN MATCH(address) AGAINST(?) THEN 5\n" +
+                "                        WHEN MATCH(websiteLink) AGAINST(?) THEN 6\n" +
+                "                        ELSE 7 \n" +
                 "                        END \n" +
                 "                limit ?, ?";
-            var params = [type,searchKey,searchKey,searchKey,searchKey,searchKey,searchKey,searchKey,searchKey,searchKey,searchKey, parseInt(from) * parseInt(threshold), parseInt(threshold)];
+            var params = [userId,searchKey,searchKey,searchKey,searchKey,searchKey,searchKey,searchKey,searchKey,searchKey,searchKey, parseInt(from) * parseInt(threshold), parseInt(threshold)];
             query = mysql.format(query, params);
             this.pool.getConnection(function (err, connection) {
                 connection.query(query, function (err, results, fields) {
@@ -846,27 +829,79 @@ class DbHandler {
             });
         }.bind(this));
     }
-    searchInVideo(searchKey, from ,threshold ) {
+    searchInUserWithType(userId, searchKey, type,from , threshold) {
+        searchKey = `%${searchKey}%`
+        return new Promise(function (resolve, reject) {
+            var query = "SELECT *,\n" +
+                "       (SELECT count(*) FROM followers WHERE following = u.id) AS totalUserFollowers,\n" +
+                "       EXISTS(SELECT * FROM followers fs WHERE u.id = fs.following AND fs.follower = ?) AS is_following\n" +
+                "FROM users u\n" +
+                "WHERE accountType = ?\n" +
+                "  AND (name LIKE ?\n" +
+                "    OR address LIKE ?\n" +
+                "    OR websiteLink LIKE ?\n" +
+                "    OR MATCH(name, address, websiteLink) AGAINST(? IN NATURAL LANGUAGE MODE))\n" +
+                "ORDER BY totalUserFollowers desc,\n" +
+                "         CASE\n" +
+                "             WHEN name LIKE ? THEN 1\n" +
+                "             WHEN address LIKE ? THEN 2\n" +
+                "             WHEN websiteLink LIKE ? THEN 3\n" +
+                "             WHEN MATCH(name) AGAINST(?) THEN 4\n" +
+                "             WHEN MATCH(address) AGAINST(?) THEN 5\n" +
+                "             WHEN MATCH(websiteLink) AGAINST(?) THEN 6\n" +
+                "             ELSE 7\n" +
+                "             END\n" +
+                "limit ?, ?";
+            var params = [userId,type,searchKey,searchKey,searchKey,searchKey,searchKey,searchKey,searchKey,searchKey,searchKey,searchKey, parseInt(from) * parseInt(threshold), parseInt(threshold)];
+            query = mysql.format(query, params);
+            this.pool.getConnection(function (err, connection) {
+                connection.query(query, function (err, results, fields) {
+                    connection.release();
+                    if (err) {
+                        console.error("[Error]", err);
+                        resolve(null);
+                        return;
+                    }
+                    resolve(results);
+                });
+            });
+        }.bind(this));
+    }
+    searchInVideo(userId, searchKey, from ,threshold ) {
 
         return new Promise(resolve => {
             searchKey = `%${searchKey}%`
-            var query = "SELECT v.*, u.name, u.profilePicture, u.username, u.levelXP , u.accountType \n" +
+            var query = "SELECT v.*,\n" +
+                "       u.name,\n" +
+                "       u.profilePicture,\n" +
+                "       u.username,\n" +
+                "       u.levelXP,\n" +
+                "       u.accountType,\n" +
+                "       (select SUM(rating) FROM rating r where v.id = r.videoId)                        as rating_total,\n" +
+                "       (select COUNT(rating) FROM rating r where v.id = r.videoId)                      as rating_count,\n" +
+                "       EXISTS(select * FROM rating r where r.userId = ? and v.id = r.videoId)           as is_user_rated,\n" +
+                "       (select rating from rating r where r.userId = ? and v.id = r.videoId)            as user_rating,\n" +
+                "       EXISTS(SELECT * FROM followers fs WHERE u.id = fs.following AND fs.follower = ?) AS is_following,\n" +
+                "       EXISTS(SELECT * FROM likes WHERE video_id = v.id AND user_id = ?)                AS viewer_liked,\n" +
+                "       EXISTS(SELECT id FROM followers WHERE follower = ? AND following = u.id)         AS viewer_following,\n" +
+                "       EXISTS(SELECT * FROM bookmark WHERE user_id = ? AND video_id = v.id)             AS isBookMarked,\n" +
+                "       (SELECT COUNT(*) FROM bookmark WHERE video_id = v.id)                            AS totalBookMarks,\n" +
+                "       (SELECT count(*) FROM followers WHERE following = u.id)                          AS totalUserFollowers\n" +
                 "FROM videos v\n" +
                 "         JOIN users u ON u.id = v.user_id\n" +
                 "WHERE title LIKE ?\n" +
                 "   OR description LIKE ?\n" +
                 "   OR MATCH(title, description) AGAINST(? IN NATURAL LANGUAGE MODE)\n" +
-                "ORDER BY\n" +
-                "    likes desc ,\n" +
-                "    CASE\n" +
-                "        WHEN title LIKE ? THEN 1\n" +
-                "        WHEN description LIKE ? THEN 2\n" +
-                "        WHEN MATCH(title) AGAINST(?) THEN 3\n" +
-                "        WHEN MATCH(description) AGAINST(?) THEN 4\n" +
-                "        ELSE 5\n" +
-                "        END \n"+
+                "ORDER BY likes desc,\n" +
+                "         CASE\n" +
+                "             WHEN title LIKE ? THEN 1\n" +
+                "             WHEN description LIKE ? THEN 2\n" +
+                "             WHEN MATCH(title) AGAINST(?) THEN 3\n" +
+                "             WHEN MATCH(description) AGAINST(?) THEN 4\n" +
+                "             ELSE 5\n" +
+                "             END\n" +
                 "limit ?, ?";
-            var params = [searchKey,searchKey,searchKey,searchKey,searchKey,searchKey,searchKey,parseInt(from) * parseInt(threshold), parseInt(threshold)];
+            var params = [userId, userId, userId, userId, userId, userId, searchKey,searchKey,searchKey,searchKey,searchKey,searchKey,searchKey,parseInt(from) * parseInt(threshold), parseInt(threshold)];
             query = mysql.format(query, params);
             this.pool.getConnection(function (err, connection) {
                 connection.query(query, async function (err, results, fields) {
@@ -1891,6 +1926,26 @@ class DbHandler {
         });
     }
 
+    deleteSearchHistory(searchId,  from = 0, limit = 10) {
+        return new Promise(resolve => {
+            var query = "DELETE FROM search_history where id = ? ";
+            var params = [searchId];
+            query = mysql.format(query, params);
+            this.pool.getConnection(function (err, connection) {
+                connection.query(query, async function (err, results, fields) {
+                    connection.release();
+                    if (err) {
+                        console.error(err);
+                        console.error(results);
+                        resolve([]);
+                    } else {
+                        resolve(results);
+                    }
+                }.bind(this));
+            }.bind(this));
+        });
+    }
+
     deleteProfile(userId) {
         return new Promise(resolve => {
             this.pool.getConnection(async function (err, connection) {
@@ -2269,6 +2324,19 @@ class DbHandler {
                 "levelColor": obj["levelColor"] ?? "",
                 "own": obj["viewer_own"] == 1,
             },
+        };
+    }
+
+    parseUserObjectForSearch(obj) {
+        return {
+            "id": obj["id"],
+            "name": obj["name"] ?? "",
+            "profilePicture": obj["profilePicture"] ?? "",
+            "bio": obj["about"] ?? "",
+            "totalFollowers": obj["totalFollowers"],
+            "accountType": obj["accountType"],
+            "isFollowing":obj["is_following"],
+
         };
     }
 
