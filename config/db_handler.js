@@ -1853,7 +1853,7 @@ class DbHandler {
         });
     }
 
-    getComments(userId, from = 0, limit = 10) {
+    getComments(userId, videoId,from = 0, limit = 10) {
         return new Promise(resolve => {
             var query = "SELECT c.*,\n" +
                 "       u.name,\n" +
